@@ -87,6 +87,8 @@ async function getLeagueCsvUrls(baseFolder) {
   let standingsUrl = "";
   let goalieUrl = "";
   let playerUrl = "";
+  let playoffGoalieUrl = "";
+  let playoffPlayerUrl = "";
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -99,6 +101,8 @@ async function getLeagueCsvUrls(baseFolder) {
       standingsUrl = String(getValue(row, "STANDINGS", headerMap) || "").trim();
       goalieUrl    = String(getValue(row, "GOALIE STATS", headerMap) || "").trim();
       playerUrl    = String(getValue(row, "PLAYER STATS", headerMap) || "").trim();
+      playoffGoalieUrl = String(getValue(row, "PLAYOFF GOALIE STATS", headerMap) || "").trim();
+      playoffPlayerUrl = String(getValue(row, "PLAYOFF PLAYER STATS", headerMap) || "").trim();
       break;
     }
   }
@@ -107,7 +111,7 @@ async function getLeagueCsvUrls(baseFolder) {
     throw new Error(`League "${leagueName}" not found or URLs missing in master league sheet.`);
   }
 
-  const urls = { divisionUrl, teamUrl, scheduleUrl, standingsUrl, goalieUrl, playerUrl };
+  const urls = { divisionUrl, teamUrl, scheduleUrl, standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl };
   leagueUrlCache[leagueName] = urls;
   return urls;
 }
@@ -156,10 +160,10 @@ async function getScheduleSheet(baseFolder /*, sheetNameIgnored */) {
 }
 
 /**
- * Convenience helper for stats sheets (STANDINGS / GOALIE STATS / PLAYER STATS columns)
+ * Convenience helper for stats sheets (STANDINGS / GOALIE STATS / PLAYER STATS / PLAYOFF GOALIE STATS / PLAYOFF PLAYER STATS columns)
  */
 async function getStatsSheet(baseFolder, sheetName) {
-  const { standingsUrl, goalieUrl, playerUrl } = await getLeagueCsvUrls(baseFolder);
+  const { standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl } = await getLeagueCsvUrls(baseFolder);
 
   let targetUrl = "";
   if (sheetName === "STANDINGS") {
@@ -168,6 +172,10 @@ async function getStatsSheet(baseFolder, sheetName) {
     targetUrl = goalieUrl;
   } else if (sheetName === "PLAYER STATS") {
     targetUrl = playerUrl;
+  } else if (sheetName === "PLAYOFF GOALIE STATS") {
+    targetUrl = playoffGoalieUrl;
+  } else if (sheetName === "PLAYOFF PLAYER STATS") {
+    targetUrl = playoffPlayerUrl;
   } else {
     throw new Error(`Unknown stats sheet name "${sheetName}"`);
   }
@@ -302,12 +310,15 @@ async function loadTeamInfo(baseFolder) {
 }
 
 /**
- * Load player stats from Google Sheets ("PLAYER STATS" tab)
- * Returns array of parsed player stats
+ * Internal helper to load player stats from a specified sheet
+ * @param {FolderEntry} baseFolder - Base folder for the league
+ * @param {string} sheetName - Name of the sheet to load ("PLAYER STATS" or "PLAYOFF PLAYER STATS")
+ * @param {string} label - Label for logging (e.g., "player" or "playoff player")
+ * @returns {Promise<Array>} Array of parsed player stats
  */
-async function loadPlayerStats(baseFolder) {
+async function _loadPlayerStatsInternal(baseFolder, sheetName, label) {
   try {
-    const playerStatRead = await getStatsSheet(baseFolder, "PLAYER STATS");
+    const playerStatRead = await getStatsSheet(baseFolder, sheetName);
 
     const headerMap = createHeaderMap(playerStatRead[0]);
 
@@ -331,21 +342,40 @@ async function loadPlayerStats(baseFolder) {
       
       allPlayerStats.push(playerStatline);    
     }
-    console.log(`✅ Built ${allPlayerStats.length} player stat objects`);
+    console.log(`✅ Built ${allPlayerStats.length} ${label} stat objects`);
     return allPlayerStats;
   } catch (error) {
-    console.error("Error loading player stats:", error);
+    console.error(`Error loading ${label} stats:`, error);
     return [];
   }
 }
 
 /**
- * Load goalie stats from Google Sheets ("GOALIE STATS" tab)
- * Returns array of parsed goalie stats
+ * Load player stats from Google Sheets ("PLAYER STATS" tab)
+ * Returns array of parsed player stats
  */
-async function loadGoalieStats(baseFolder) {
+async function loadPlayerStats(baseFolder) {
+  return _loadPlayerStatsInternal(baseFolder, "PLAYER STATS", "player");
+}
+
+/**
+ * Load playoff player stats from Google Sheets ("PLAYOFF PLAYER STATS" tab)
+ * Returns array of parsed playoff player stats
+ */
+async function loadPlayoffPlayerStats(baseFolder) {
+  return _loadPlayerStatsInternal(baseFolder, "PLAYOFF PLAYER STATS", "playoff player");
+}
+
+/**
+ * Internal helper to load goalie stats from a specified sheet
+ * @param {FolderEntry} baseFolder - Base folder for the league
+ * @param {string} sheetName - Name of the sheet to load ("GOALIE STATS" or "PLAYOFF GOALIE STATS")
+ * @param {string} label - Label for logging (e.g., "goalie" or "playoff goalie")
+ * @returns {Promise<Array>} Array of parsed goalie stats
+ */
+async function _loadGoalieStatsInternal(baseFolder, sheetName, label) {
   try {
-    const goalieStatRead = await getStatsSheet(baseFolder, "GOALIE STATS");
+    const goalieStatRead = await getStatsSheet(baseFolder, sheetName);
 
     const headerMap = createHeaderMap(goalieStatRead[0]);
 
@@ -372,12 +402,28 @@ async function loadGoalieStats(baseFolder) {
 
       allGoalieStats.push(goalieStatline);
     }
-    console.log(`✅ Built ${allGoalieStats.length} goalie stat objects`);
+    console.log(`✅ Built ${allGoalieStats.length} ${label} stat objects`);
     return allGoalieStats;
   } catch (error) {
-    console.error("Error loading goalie stats:", error);
+    console.error(`Error loading ${label} stats:`, error);
     return [];
   }
+}
+
+/**
+ * Load goalie stats from Google Sheets ("GOALIE STATS" tab)
+ * Returns array of parsed goalie stats
+ */
+async function loadGoalieStats(baseFolder) {
+  return _loadGoalieStatsInternal(baseFolder, "GOALIE STATS", "goalie");
+}
+
+/**
+ * Load playoff goalie stats from Google Sheets ("PLAYOFF GOALIE STATS" tab)
+ * Returns array of parsed playoff goalie stats
+ */
+async function loadPlayoffGoalieStats(baseFolder) {
+  return _loadGoalieStatsInternal(baseFolder, "PLAYOFF GOALIE STATS", "playoff goalie");
 }
 
 /**
@@ -580,6 +626,8 @@ module.exports = {
   loadTeamInfo,
   loadPlayerStats,
   loadGoalieStats,
+  loadPlayoffPlayerStats,
+  loadPlayoffGoalieStats,
   loadStandings,
   loadSchedule,
   loadLeagueConfig,
