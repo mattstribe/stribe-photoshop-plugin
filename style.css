@@ -1,0 +1,275 @@
+body {
+  color: #f5f5f5;
+  padding: 12px 16px;
+  text-align: center;
+  height: 100vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top left, #1f2933, #050608 55%, #000000);
+}
+  li:before {
+    content: '• ';
+    width: 3em;
+  }
+
+/* Card containers for license + main UI */
+#license-screen,
+#main-ui {
+  max-width: 280px;
+  margin: 10px auto 22px;
+  padding: 16px 14px 18px;
+  background: rgba(13, 16, 24, 0.96);
+  border-radius: 10px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+sp-heading {
+  margin: 0 0 10px;
+  font-size: 17px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+#pluginLogo {
+  max-width: 100px;
+  display: block;
+  margin: 0 auto 8px;
+}
+
+#main-ui sp-heading {
+  margin-bottom: 6px;
+}
+
+.info-display {
+  background-color: rgba(128, 128, 128, 0.18);
+  border-radius: 6px;
+  padding: 6px 9px;
+  margin: 8px 0;
+  font-size: 13px;
+  color: #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.division-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 4px 0 2px;
+}
+
+.division-row sp-textfield {
+  width: 70px;
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+/* Division selector field styling */
+.division-row sp-textfield::part(field),
+.division-row sp-textfield::part(input) {
+  background-color: #0b0e16;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  color: #e5e7eb;
+  cursor: text; /* text cursor when hovering/typing */
+}
+
+.division-row sp-textfield::part(field):focus-within,
+.division-row sp-textfield::part(input):focus-visible {
+  border-color: #5ac8fa;
+}
+
+.division-display-inline {
+  flex: 1;
+  font-size: 14px;
+  color: #e0e0e0;
+  text-align: left;
+  padding-left: 7px;
+  padding-top: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+#status {
+  border: 1px solid rgba(128, 128, 128, 0.65);
+  border-radius: 8px;
+  padding: 10px 9px;
+  max-height: 180px;
+  overflow-y: auto;
+  word-wrap: break-word;
+  font-size: 13px;
+  text-align: left;
+  background: rgba(10, 12, 18, 0.9);
+}
+
+sp-button {
+  margin: 5px 4px;
+  font-size: 14px;
+  min-width: 110px;
+}
+
+/* Dark blue rounded-rectangle buttons with light text */
+sp-button,
+sp-button::part(button) {
+  background-color: #1e3a8a; /* dark blue */
+  color: #f9fafb;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer; /* show hand cursor on hover/clickable buttons */
+}
+
+sp-button::part(button):hover {
+  background-color: #2742a3;
+}
+
+/* Disabled buttons: greyed out and non-interactive */
+sp-button[disabled],
+sp-button[disabled]::part(button) {
+  background-color: #4b5563; /* grey */
+  color: #d1d5db;
+  cursor: default;
+  opacity: 0.85;
+}
+
+sp-button[disabled]::part(button):hover {
+  background-color: #4b5563;
+}
+
+/* Checkbox: show pointer hand on hover */
+sp-checkbox,
+sp-checkbox::part(checkbox) {
+  cursor: pointer;
+}
+
+/* Logout button: ghost style matching background */
+#btnLogout,
+#btnLogout::part(button) {
+  background-color: transparent;
+  color: #9ca3af;
+  border: none;
+  font-weight: 500;
+}
+
+#btnLogout::part(button):hover {
+  background-color: rgba(148, 163, 184, 0.12);
+}
+
+.button-link {
+  color: #5ac8fa;
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 5px;
+}
+
+.button-link:hover {
+  color: #7dd8ff;
+  text-decoration: underline;
+}
+
+sp-label {
+  font-size: 13px;
+}
+
+.input-wrap {
+  margin: 6px 0 10px;
+  text-align: left;
+}
+
+.input-wrap label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 3px;
+  opacity: 0.8;
+}
+
+.input-wrap input {
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  width: 100%;
+  display: block;
+}
+
+/* Version + footer text */
+#main-ui sp-body.info-display:last-of-type {
+  justify-content: center;
+  font-size: 11px;
+  opacity: 0.8;
+  background: transparent;
+  padding: 2px 0;
+}
+
+/* Settings Menu (3-dot menu) */
+.settings-menu-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.settings-menu-button {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.settings-menu-button:hover {
+  background-color: rgba(148, 163, 184, 0.12);
+  color: #d1d5db;
+}
+
+.settings-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 4px;
+  background: rgba(13, 16, 24, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  min-width: 160px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.settings-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.settings-menu-item:hover {
+  background-color: rgba(148, 163, 184, 0.15);
+  color: #f5f5f5;
+}
+
+.settings-menu-item:first-child {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.settings-menu-item:last-child {
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+}

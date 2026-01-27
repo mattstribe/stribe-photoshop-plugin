@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="style.css">   
+</head>
+<body>
+
+  <!-- Licensing Screen (new) -->
+  <div id="license-screen">
+    <sp-heading>🔐 Activate License</sp-heading>
+    <div class="input-wrap">
+      <label for="emailInput">Email</label>
+      <input id="emailInput" type="email" autocomplete="off" spellcheck="false" />
+    </div>
+    
+    <div class="input-wrap">
+      <label for="keyInput">License Key</label>
+      <input id="keyInput" type="text" autocomplete="off" spellcheck="false" />
+    </div>
+
+    <sp-body id="licenseError" class="error-msg"></sp-body>
+
+    <sp-button id="btnActivate">ACTIVATE</sp-button>
+  </div>
+
+  <!-- Your existing UI (hidden until activation) -->
+  <div id="main-ui" style="display:none;">
+    <img src="icons/STRIBE_logo.png" id="pluginLogo" />
+    <sp-heading>Weekly Updates</sp-heading>
+
+    <sp-body class="info-display">
+      <span id="folderDisplay">Folder: Loading...</span>
+      <span id="btnSelectFolder" class="button-link">(Browse)</span>
+    </sp-body>
+
+    <sp-body id="status"></sp-body>
+
+    <sp-label for="divisionInput">Division Selector (Abb):</sp-label>
+    <div class="division-row">
+      <sp-textfield id="divisionInput" value="ALL" placeholder="ALL"></sp-textfield>
+      <sp-body id="divisionDisplay" class="division-display-inline">Division: ALL</sp-body>
+    </div>
+
+    <sp-checkbox id="allDivisionsCheckbox">
+      Ignore Week
+    </sp-checkbox>
+
+    <sp-body class="info-display">
+      <span id="weekDisplay">Week: -</span>
+      <span id="btnRefreshWeek" class="button-link">(Refresh)</span>
+    </sp-body>
+
+    <sp-button id="btnSchedule">Run SCHEDULE</sp-button>
+    <sp-button id="btnStandings">Run STANDINGS</sp-button>
+    <sp-button id="btnStats">Run STATS</sp-button>
+    <br>
+    <sp-checkbox id="exportToCloudCheckbox">
+      Export to Cloud
+    </sp-checkbox>
+
+    <sp-body class="info-display">v2.4.0</sp-body>
+    <sp-body style="font-size:11px;opacity:0.6;margin-top:20px;">
+      STRIBE MEDIA • © 2025
+    </sp-body>
+    
+    <!-- Settings Menu -->
+    <div class="settings-menu-container">
+      <button id="settingsMenuButton" class="settings-menu-button" title="Settings">⋯</button>
+      <div id="settingsMenu" class="settings-menu" style="display: none;">
+        <button id="btnClearCache" class="settings-menu-item">Clear Logo Cache</button>
+        <button id="btnLogout" class="settings-menu-item">Log Out</button>
+      </div>
+    </div>
+    <br>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
