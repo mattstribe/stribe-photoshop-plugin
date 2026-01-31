@@ -169,9 +169,13 @@ async function handleStandingsUpdate(baseFolder) {
         }
       }
 
-      // Navigate folders
-      const automationsFolder = await baseFolder.getEntry('Automations');
-      const gamedayFolder = await automationsFolder.getEntry('Gameday Graphics');
+      // Navigate folders: Gameday Graphics inside league, or user selected Gameday Graphics directly
+      let gamedayFolder;
+      try {
+        gamedayFolder = await baseFolder.getEntry('Gameday Graphics');
+      } catch {
+        gamedayFolder = baseFolder;
+      }
       const templateFolder = await gamedayFolder.getEntry(DOC_ID);
 
       // Build logo source configuration (online vs local)

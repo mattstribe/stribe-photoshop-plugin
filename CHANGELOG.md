@@ -1,3 +1,6 @@
+## 2.4.1
+- Folder structure: Gameday Graphics is now expected directly inside the league folder (no Automations folder)
+
 ## 2.4.0
 - Added Bracket feature
 - Added Playoff Stats feature

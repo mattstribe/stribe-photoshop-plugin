@@ -86,9 +86,8 @@ async function handleScheduleUpdate(baseFolder) {
       return;
     }
 
-    // Root folders
-    const automationsFolder = await baseFolder.getEntry('Automations');
-    const gamedayFolder = await automationsFolder.getEntry('Gameday Graphics');
+    // Root folders (Gameday Graphics is directly inside the league folder)
+    const gamedayFolder = await baseFolder.getEntry('Gameday Graphics');
     const templateFolder = await gamedayFolder.getEntry(DOC_ID);
 
     // Track previously opened doc id (for ALL mode)

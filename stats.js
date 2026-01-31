@@ -309,9 +309,13 @@ async function handleStatsUpdate(baseFolder) {
       }
 
                
-      // Navigate through folder structure using folder objects
-      const automationsFolder = await baseFolder.getEntry('Automations');
-      const gamedayFolder = await automationsFolder.getEntry('Gameday Graphics');
+      // Navigate folder structure: Gameday Graphics inside league, or user selected Gameday Graphics directly
+      let gamedayFolder;
+      try {
+        gamedayFolder = await baseFolder.getEntry('Gameday Graphics');
+      } catch {
+        gamedayFolder = baseFolder;
+      }
       const templateFolder = await gamedayFolder.getEntry(DOC_ID);
       
       // Build logo source configuration (online vs local)
