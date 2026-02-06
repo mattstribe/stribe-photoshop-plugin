@@ -2,7 +2,6 @@ const photoshop = require("photoshop");
 const app = photoshop.app;
 const core = photoshop.core;
 const leagueConfig = require("./leagueConfig_200.js");
-const logoHandler = require("./logoHandler.js");
 const exportHandler = require("./exportHandler.js");
 const fs = require("uxp").storage.localFileSystem;
 
@@ -36,9 +35,7 @@ async function handleBracketUpdate(baseFolder, divisionData) {
       userDiv,
       cloudExportEnabled,
       gamedayFolder,
-      templateFolder,
-      logoSource,
-      logosFolder
+      templateFolder
     } = divisionData;
 
     // Template file - try division-specific bracket first, then default bracket

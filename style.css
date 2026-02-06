@@ -42,6 +42,28 @@ sp-heading {
   margin-bottom: 6px;
 }
 
+.league-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.league-logo {
+  max-width: 48px;
+  max-height: 48px;
+  object-fit: contain;
+  border-radius: 4px;
+  padding: 0;
+  border: 0px solid rgba(255, 255, 255, 0.15);
+  margin: 10px 0;
+}
+
+.league-display .info-display {
+  margin: 0;
+}
+
 .info-display {
   background-color: rgba(128, 128, 128, 0.18);
   border-radius: 6px;

@@ -2,7 +2,7 @@ const photoshop = require("photoshop");
 const app = photoshop.app;
 const core = photoshop.core;
 const leagueConfig = require("./leagueConfig_200.js");
-const logoHandler = require("./logoHandler.js");
+const imageHandler = require("./imageHandler.js");
 const exportHandler = require("./exportHandler.js");
 const fs = require("uxp").storage.localFileSystem;
 
@@ -317,9 +317,6 @@ async function handleStatsUpdate(baseFolder) {
         gamedayFolder = baseFolder;
       }
       const templateFolder = await gamedayFolder.getEntry(DOC_ID);
-      
-      // Build logo source configuration (online vs local)
-      const { logoSource, logosFolder } = await logoHandler.buildLogoSource(baseFolder, conf, divAbb);
 
       // Get the template file (playoff or regular)
       const templateFile = await templateFolder.getEntry(`${templateName}.psd`);
@@ -403,9 +400,11 @@ async function handleStatsUpdate(baseFolder) {
               
               // Update team information
               await fillColor(teamColorLayer, tColor);
-              await logoHandler.replaceLogo(teamLogoLayer, logoSource, tFull, logosFolder, 'STATS');
+              const logoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
+              let ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, logoUrl);
+              if (!ok) ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
+              if (!ok) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
-              
               // Update text layers
               firstNameLayer.textItem.contents = topPoints[i].firstName.toUpperCase();
               lastNameLayer.textItem.contents = sanitizeLastName(topPoints[i].lastName).toUpperCase();
@@ -453,8 +452,10 @@ async function handleStatsUpdate(baseFolder) {
               
               // Update team information
               await fillColor(teamColorLayer, tColor);
-              await logoHandler.replaceLogo(teamLogoLayer, logoSource, tFull, logosFolder, 'STATS');
-
+              const goalLogoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
+              let goalOk = await imageHandler.replaceLayerWithImage(teamLogoLayer, goalLogoUrl);
+              if (!goalOk) goalOk = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
+              if (!goalOk) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
               // Update text layers
               firstNameLayer.textItem.contents = topGoals[i].firstName.toUpperCase();
@@ -514,9 +515,11 @@ async function handleStatsUpdate(baseFolder) {
               
               // Update team information
               await fillColor(teamColorLayer, tColor);
-              await logoHandler.replaceLogo(teamLogoLayer, logoSource, tFull, logosFolder, 'STATS');
+              const gaaLogoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
+              let gaaOk = await imageHandler.replaceLayerWithImage(teamLogoLayer, gaaLogoUrl);
+              if (!gaaOk) gaaOk = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
+              if (!gaaOk) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
-              
               // Update text layers
               firstNameLayer.textItem.contents = topGAA[i].firstName.toUpperCase();
               lastNameLayer.textItem.contents = sanitizeLastName(topGAA[i].lastName).toUpperCase();

@@ -2,7 +2,7 @@ const photoshop = require("photoshop");
 const app = photoshop.app;
 const core = photoshop.core;
 const leagueConfig = require("./leagueConfig_200.js");
-const logoHandler = require("./logoHandler.js");
+const imageHandler = require("./imageHandler.js");
 const exportHandler = require("./exportHandler.js");
 const bracketHandler = require("./bracket.js");
 const fs = require("uxp").storage.localFileSystem;
@@ -138,11 +138,9 @@ async function handleStandingsUpdate(baseFolder) {
       }
 
       // Conference info (location/timezone)
-      let confTimeZone = null;
       let confLocation = null;
       for (let i=0; i < confs.length; i++){
         if (confs[i].conf === conf) {
-          confTimeZone = confs[i].timeZone;
           confLocation = confs[i].location;
           break;
         }
@@ -178,9 +176,6 @@ async function handleStandingsUpdate(baseFolder) {
       }
       const templateFolder = await gamedayFolder.getEntry(DOC_ID);
 
-      // Build logo source configuration (online vs local)
-      const { logoSource, logosFolder } = await logoHandler.buildLogoSource(baseFolder, conf, divAbb);
-
       // If division has playoff games (current or next week), run bracket.js
       // This can run in addition to standings if division also has regular season games
       if (hasPlayoffGames) {
@@ -201,9 +196,7 @@ async function handleStandingsUpdate(baseFolder) {
           userDiv,
           cloudExportEnabled,
           gamedayFolder,
-          templateFolder,
-          logoSource,
-          logosFolder
+          templateFolder
         };
         const newDocId = await bracketHandler.handleBracketUpdate(baseFolder, divisionData);
         if (userDiv === 'ALL') {
@@ -239,7 +232,7 @@ async function handleStandingsUpdate(baseFolder) {
       for (let i = 0; i < divTeams.length; i++) 
         standings.push(nullTeam);
 
-      // Template and working save file, search for division-specific file first
+    // Template and working save file, search for division-specific file first
     let templateFile;
     try {
       templateFile = await templateFolder.getEntry(`${divAbb}_${DOC_ID}.psd`);
@@ -425,7 +418,10 @@ async function handleStandingsUpdate(baseFolder) {
 
             //update team information
             await fillColor(teamColorLayer, tColor);
-            await logoHandler.replaceLogo(teamLogoLayer, logoSource, tFull, logosFolder, 'STANDINGS');
+            const logoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
+            let ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, logoUrl);
+            if (!ok) ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
+            if (!ok) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
             // Text updates
             teamNameLayer.textItem.contents = (() => { const u = String(tName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();

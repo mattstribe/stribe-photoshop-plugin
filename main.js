@@ -38,6 +38,13 @@ document.getElementById("btnStats").addEventListener("click", async () => {
   await statsModule.handleStatsUpdate(baseFolder);
 });
 
+document.getElementById("btnDivPreviews").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const divPreviewsModule = require("./divPreviews.js");
+  await divPreviewsModule.handleDivPreviewsUpdate(baseFolder);
+});
+
 // Division
 document.getElementById("divisionInput").addEventListener("input", ui.updateDivisionDisplay);
 
@@ -70,16 +77,16 @@ if (settingsMenuButton && settingsMenu) {
   // Clear cache button
   if (btnClearCache) {
     btnClearCache.addEventListener("click", async () => {
-      const logoHandler = require("./logoHandler.js");
-      await logoHandler.clearLogoCache();
+      const imageHandler = require("./imageHandler.js");
+      await imageHandler.clearCache();
       settingsMenu.style.display = "none";
       
       // Show confirmation
       const statusEl = document.getElementById("status");
       if (statusEl) {
-        statusEl.innerHTML = "✅ Logo cache cleared";
+        statusEl.innerHTML = "✅ Image cache cleared";
         setTimeout(() => {
-          if (statusEl.innerHTML === "✅ Logo cache cleared") {
+          if (statusEl.innerHTML === "✅ Image cache cleared") {
             statusEl.innerHTML = "";
           }
         }, 2000);

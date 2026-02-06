@@ -1,6 +1,7 @@
 // ui.js
 const leagueConfig = require("./leagueConfig_200.js");
 const storage = require("./storage.js");
+const uxpStorage = require("uxp").storage;
 
 let hasFolderSelected = false;
 let cachedDivisions = null;
@@ -8,12 +9,42 @@ let cachedWeek = null;
 let cachedYear = null;
 let cachedConfs = null;
 
+/** Try to load league logo from baseFolder/LOGOS/leagueLogo.png (or LeagueLogo.png) and set as data URL on img. */
+async function setLeagueLogo(baseFolder, imgEl) {
+  if (!imgEl) return;
+  imgEl.style.display = "none";
+  imgEl.removeAttribute("src");
+  try {
+    const logosFolder = await baseFolder.getEntry("LOGOS");
+    let fileEntry = null;
+    try {
+      fileEntry = await logosFolder.getEntry("leagueLogo.png");
+    } catch {
+      try {
+        fileEntry = await logosFolder.getEntry("LeagueLogo.png");
+      } catch {}
+    }
+    if (!fileEntry) return;
+    const data = await fileEntry.read({ format: uxpStorage.formats.binary });
+    const bytes = new Uint8Array(data);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary);
+    imgEl.src = `data:image/png;base64,${base64}`;
+    imgEl.style.display = "";
+  } catch (err) {
+    console.log("League logo not found or unreadable:", err.message);
+  }
+}
+
 async function loadFolderData(baseFolder) {
   const weekDisplayEl = document.getElementById("weekDisplay");
   const folderDisplayEl = document.getElementById("folderDisplay");
+  const leagueLogoEl = document.getElementById("leagueLogo");
 
   if (baseFolder) {
     folderDisplayEl.textContent = `Folder: ${baseFolder.name}`;
+    await setLeagueLogo(baseFolder, leagueLogoEl);
     try {
       const [divisions, conferences, schedule] = await Promise.all([
         leagueConfig.loadDivisionInfo(baseFolder),
@@ -44,6 +75,10 @@ async function loadFolderData(baseFolder) {
     }
   } else {
     folderDisplayEl.textContent = "Folder: Please select your League Package folder";
+    if (leagueLogoEl) {
+      leagueLogoEl.style.display = "none";
+      leagueLogoEl.removeAttribute("src");
+    }
     if (weekDisplayEl) weekDisplayEl.textContent = "Week: -";
     hasFolderSelected = false;
     updateActionButtons();
@@ -54,11 +89,14 @@ function updateActionButtons() {
   const scheduleBtn = document.getElementById("btnSchedule");
   const standingsBtn = document.getElementById("btnStandings");
   const statsBtn = document.getElementById("btnStats");
+  const divPreviewsBtn = document.getElementById("btnDivPreviews");
 
   if (!hasFolderSelected) {
     scheduleBtn.disabled = standingsBtn.disabled = statsBtn.disabled = true;
+    if (divPreviewsBtn) divPreviewsBtn.disabled = true;
     return;
   }
+  if (divPreviewsBtn) divPreviewsBtn.disabled = false;
 
   const divisionInput = document.getElementById("divisionInput").value.trim().toUpperCase();
   const isAll = divisionInput === "ALL";

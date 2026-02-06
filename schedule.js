@@ -2,7 +2,7 @@ const photoshop = require("photoshop");
 const app = photoshop.app;
 const core = photoshop.core;
 const leagueConfig = require("./leagueConfig_200.js");
-const logoHandler = require("./logoHandler.js");
+const imageHandler = require("./imageHandler.js");
 const exportHandler = require("./exportHandler.js");
 const fs = require("uxp").storage.localFileSystem;
 
@@ -302,9 +302,6 @@ async function handleScheduleUpdate(baseFolder) {
                     break;
                   }
                 }
-                // Build logo source configuration (online vs local)
-                const { logoSource, logosFolder } = await logoHandler.buildLogoSource(baseFolder, conf, divAbb);
-
                 // Toggle time/final based on docType
                 if (docType === 'Final Scores') {
                   if (timeFolder) timeFolder.visible = false;
@@ -375,15 +372,21 @@ async function handleScheduleUpdate(baseFolder) {
 
                 // Logos with fallback to LeagueLogo.png
                 if (t1Found) {
-                  await logoHandler.replaceLogo(logo1, logoSource, t1Full, logosFolder, 'SCHEDULE');
+                  const logo1Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(t1Full)}.png`;
+                  let ok1 = await imageHandler.replaceLayerWithImage(logo1, logo1Url);
+                  if (!ok1) ok1 = await imageHandler.replaceLayerWithImage(logo1, `LOGOS/TEAMS/${conf}/${divAbb}/${t1Full}.png`, baseFolder);
+                  if (!ok1) await imageHandler.replaceLayerWithImage(logo1, "LOGOS/LeagueLogo.png", baseFolder);
                 } else {
-                  await logoHandler.replaceLogo(logo1, null, 'LeagueLogo', logosFolder, 'SCHEDULE');
+                  await imageHandler.replaceLayerWithImage(logo1, "LOGOS/LeagueLogo.png", baseFolder);
                 }
 
                 if (t2Found) {
-                  await logoHandler.replaceLogo(logo2, logoSource, t2Full, logosFolder, 'SCHEDULE');
+                  const logo2Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(t2Full)}.png`;
+                  let ok2 = await imageHandler.replaceLayerWithImage(logo2, logo2Url);
+                  if (!ok2) ok2 = await imageHandler.replaceLayerWithImage(logo2, `LOGOS/TEAMS/${conf}/${divAbb}/${t2Full}.png`, baseFolder);
+                  if (!ok2) await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
                 } else {
-                  await logoHandler.replaceLogo(logo2, null, 'LeagueLogo', logosFolder, 'SCHEDULE');
+                  await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
                 }
 
                 // Division label – always prefer short name if available
