@@ -598,8 +598,6 @@ function hexToRgb(hex) {
 
 async function fillColor(layer, hex) {
   const { r, g, b } = hexToRgb(hex);
-
-  // Select the layer
   await app.batchPlay(
     [{
       _obj: "select",
@@ -610,8 +608,6 @@ async function fillColor(layer, hex) {
     }],
     { synchronousExecution: true }
   );
-
-  // Fill with color
   await app.batchPlay(
     [{
       _obj: "set",
@@ -625,16 +621,13 @@ async function fillColor(layer, hex) {
   );
 }
 
-// Helper function to find layers by name
 const getByName = (parent, name) => {
     const layers = parent.layers || parent;
     return layers.find(l => l.name === name);
 };
 
-// Helper function to set text color based on background
 const setTextColor = (layer, backgroundColor) => {
     const color = new app.SolidColor();
-    // If background is white, use dark text; otherwise use white text
     if (backgroundColor == 'ffffff') {
         color.rgb.hexValue = '252525';
     } else {
@@ -642,8 +635,6 @@ const setTextColor = (layer, backgroundColor) => {
     }
     layer.textItem.characterStyle.color = color;
 };
-
-
 
 // Export functions
 module.exports = {
@@ -654,17 +645,13 @@ module.exports = {
 
 // ===== Helpers (bottom of file) =====
 
-// Remove trailing pronoun annotations like "(they/them)" or "they/them" from last names
 function sanitizeLastName(lastName) {
     let s = String(lastName || '');
-    // Remove parenthetical pronouns at end, e.g., "Smith (they/them)"
     s = s.replace(/\s*\((?:they|she|he)\s*\/\s*(?:them|her|him)\)\s*$/i, '');
-    // Remove bare pronouns at end, e.g., "Smith they/them"
     s = s.replace(/\s+(?:they|she|he)\s*\/\s*(?:them|her|him)\s*$/i, '');
     return s.trim();
 }
 
-// Ensure folder path under a root FolderEntry; returns the deepest folder
 async function ensureFolderPath(rootFolder, segments){
     let current = rootFolder;
     for (const segment of segments){
@@ -674,7 +661,6 @@ async function ensureFolderPath(rootFolder, segments){
     return current;
 }
 
-// Prepare and return a FileEntry for Stats PNG export
 async function prepareStatsExport(gamedayFolder, week, divAbb, isPlayoff = false){
     const weekFolderName = `Week ${week}`;
     const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', weekFolderName, DOC_EXPORT]);

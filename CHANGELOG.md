@@ -1,5 +1,6 @@
 ## 2.5.0
-- Added Division Preview button and empty divPreviews.js module (implementation to follow)
+- Added Division Preview button and divPreviews.js
+- updated logoHandler to imageHandler
 
 ## 2.4.1
 - Folder structure: Gameday Graphics is now expected directly inside the league folder (no Automations folder)

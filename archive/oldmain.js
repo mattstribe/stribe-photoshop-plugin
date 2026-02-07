@@ -331,7 +331,7 @@ document.getElementById("btnSchedule").addEventListener("click", async () => {
     statusEl.textContent = "⚠️ Please select your League Package folder first";
     return;
   }
-  const scheduleModule = require("./schedule.js");
+  const scheduleModule = require("../schedule.js");
   await scheduleModule.handleScheduleUpdate(baseFolder);
 });
 
@@ -343,7 +343,7 @@ document.getElementById("btnStandings").addEventListener("click", async () => {
     statusEl.textContent = "⚠️ Please select your League Package folder first";
     return;
   }
-  const standingsModule = require("./standings.js");
+  const standingsModule = require("../standings.js");
   await standingsModule.handleStandingsUpdate(baseFolder);
 });
 
@@ -355,7 +355,7 @@ document.getElementById("btnStats").addEventListener("click", async () => {
     statusEl.textContent = "⚠️ Please select your League Package folder first";
     return;
   }
-  const statsModule = require("./stats.js");
+  const statsModule = require("../stats.js");
   await statsModule.handleStatsUpdate(baseFolder);
 });
 

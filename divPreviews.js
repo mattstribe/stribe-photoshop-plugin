@@ -309,7 +309,6 @@ async function duplicate(group, newName, deltaX = 0, deltaY = 0) {
       return dup;
     }
 
-
 // Ensure folder path under a root FolderEntry; returns the deepest folder
 async function ensureFolderPath(rootFolder, segments) {
   let current = rootFolder;
@@ -319,6 +318,7 @@ async function ensureFolderPath(rootFolder, segments) {
   }
   return current;
 }
+
 async function prepareDivPreviewExport(gamedayFolder, week, divAbb, chunkIndex) {
   const weekFolderName = `Week ${week}`;
   const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', weekFolderName, DOC_EXPORT]);

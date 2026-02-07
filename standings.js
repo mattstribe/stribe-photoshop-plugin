@@ -494,6 +494,19 @@ async function fillColor(layer, hex) {
   ], { synchronousExecution: true });
 }
 
+const getByName = (parent, name) => {
+  const layers = parent.layers || parent;
+  return layers.find(l => l.name === name);
+};
+
+const setTextColor = (layer, backgroundColor) => {
+  const color = new app.SolidColor();
+  if (backgroundColor === 'ffffff')
+    color.rgb.hexValue = '252525';
+  else color.rgb.hexValue = 'ffffff';
+  layer.textItem.color = color;
+};
+
 async function translate(layer, deltaX, deltaY) {
   const dx = Math.round(deltaX);
   const dy = Math.round(deltaY);
@@ -534,20 +547,6 @@ async function scaleLayer(layer, percent) {
     }
   ], { synchronousExecution: true });
 }
-
-const getByName = (parent, name) => {
-  const layers = parent.layers || parent;
-  return layers.find(l => l.name === name);
-};
-
-const setTextColor = (layer, backgroundColor) => {
-  const color = new app.SolidColor();
-  if (backgroundColor === 'ffffff') 
-    color.rgb.hexValue = '252525';
-  else color.rgb.hexValue = 'ffffff';
-  layer.textItem.color = color;
-};
-
 
 function compareTeams(team1, team2, sortConfig) {
   for (let i = 0; i < sortConfig.length; i++) {
@@ -646,7 +645,6 @@ async function duplicate(group, newName, deltaX = 0, deltaY = 0) {
 
       return dup;
     }
-
 
 // Ensure folder path under a root FolderEntry; returns the deepest folder
 async function ensureFolderPath(rootFolder, segments) {

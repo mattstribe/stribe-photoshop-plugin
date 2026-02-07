@@ -6,12 +6,12 @@ const imageHandler = require("./imageHandler.js");
 const exportHandler = require("./exportHandler.js");
 const fs = require("uxp").storage.localFileSystem;
 
+// Helper
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 // Document identifiers for this script
 const DOC_ID = 'SCHEDULE';        // folder + template basename (e.g., SCHEDULE/SCHEDULE.psd)
 // We export to one of two folders depending on mode: 'Upcoming Games' or 'Final Scores'
-
-// Helper
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Function to handle SCHEDULE Update
 async function handleScheduleUpdate(baseFolder) {
@@ -459,17 +459,17 @@ async function fillColor(layer, hex) {
   ], { synchronousExecution: true });
 }
 
+const getByName = (parent, name) => {
+  const layers = parent.layers || parent;
+  return layers.find(l => l.name === name);
+};
+
 function setTextHex(layer, hex) {
   if (!layer) return;
   const color = new app.SolidColor();
   color.rgb.hexValue = String(hex).replace(/^#/, '').toLowerCase();
   layer.textItem.color = color;
 }
-
-const getByName = (parent, name) => {
-  const layers = parent.layers || parent;
-  return layers.find(l => l.name === name);
-};
 
 
 // Duplicate a layer/group, strip "copy" suffixes, and translate by offset
