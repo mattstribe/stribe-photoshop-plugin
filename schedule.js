@@ -468,7 +468,7 @@ function setTextHex(layer, hex) {
   if (!layer) return;
   const color = new app.SolidColor();
   color.rgb.hexValue = String(hex).replace(/^#/, '').toLowerCase();
-  layer.textItem.color = color;
+  layer.textItem.characterStyle.color = color;
 }
 
 

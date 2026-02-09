@@ -436,6 +436,7 @@ async function handleStandingsUpdate(baseFolder) {
             ptsText.textItem.contents = finalStandings[i].pts;
             pctText.textItem.contents = finalStandings[i].pct;
 
+            /* WILL NEED TO FIX FOR CUSTOM TEMPLATES
             // Text color based on background
             setTextColor(teamNameLayer, tColor);
             setTextColor(gpText, tColor);
@@ -445,6 +446,7 @@ async function handleStandingsUpdate(baseFolder) {
             if (otwText) setTextColor(otwText, tColor);
             setTextColor(ptsText, tColor);
             setTextColor(pctText, tColor);
+            */
           }
 
           // After finishing this chunk, record how many teams we've output so far
@@ -504,7 +506,7 @@ const setTextColor = (layer, backgroundColor) => {
   if (backgroundColor === 'ffffff')
     color.rgb.hexValue = '252525';
   else color.rgb.hexValue = 'ffffff';
-  layer.textItem.color = color;
+  layer.textItem.characterStyle.color = color;
 };
 
 async function translate(layer, deltaX, deltaY) {

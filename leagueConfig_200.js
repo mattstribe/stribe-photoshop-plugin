@@ -204,6 +204,15 @@ function getValue(row, columnName, headerMap) {
 }
 
 /**
+ * Normalize color value: remove #, trim, convert to lowercase
+ * Returns normalized hex color string (e.g., "ffffff" or "000000")
+ */
+function normalizeColor(color) {
+  if (!color) return '000000';
+  return String(color).replace(/^#/, '').trim().toLowerCase() || '000000';
+}
+
+/**
  * Read and parse Division Info from Google Sheets ("Divisions" tab)
  * Returns array of division objects
  */
@@ -219,8 +228,8 @@ async function loadDivisionInfo(baseFolder) {
         conf: divInfo[n][0],
         div: divInfo[n][1],
         abb: divInfo[n][2],
-        color1: divInfo[n][3],
-        color2: divInfo[n][4],
+        color1: normalizeColor(divInfo[n][3]),
+        color2: normalizeColor(divInfo[n][4]),
         divShort: divInfo[n][6]
       };
       divs.push(divObject);
@@ -260,7 +269,7 @@ async function loadConferenceInfo(baseFolder) {
       if (isUnique) {
         const confObject = {
           conf: divInfo[n][0],
-          color: divInfo[n][3],
+          color: normalizeColor(divInfo[n][3]),
           timeZone: divInfo[n][4],
           location: divInfo[n][5]
         };
@@ -278,29 +287,32 @@ async function loadConferenceInfo(baseFolder) {
 
 /**
  * Read and parse Team Info from Google Sheets ("All Teams" tab)
- * Returns array of team objects
+ * Returns array of team objects. Uses header mapping so column order does not matter.
+ * Expected column headers: Conf, Div, Abb, Team City, Team Name, Color 1, Color 2, Full Team
  */
 async function loadTeamInfo(baseFolder) {
   try {
     const teamInfo = await getBrandingSheet(baseFolder, "All Teams");
-    
-    // SETUP TEAM INFO
+
+    const headerMap = createHeaderMap(teamInfo[0]);
     const teams = [];
-    
+
     for (let n = 1; n < teamInfo.length; n++) {
+      const row = teamInfo[n];
       const teamObject = {
-        conf: teamInfo[n][0],
-        div: teamInfo[n][1],
-        abb: teamInfo[n][2],
-        teamCity: teamInfo[n][3],
-        teamName: teamInfo[n][4],
-        fullTeam: teamInfo[n][7],
-        color1: teamInfo[n][5],
-        color2: teamInfo[n][6]
+        conf: getValue(row, "Conf", headerMap) || getValue(row, "Tier", headerMap),
+        div: getValue(row, "Division", headerMap),
+        abb: getValue(row, "Abb", headerMap),
+        teamCity: getValue(row, "Team City", headerMap),
+        teamName: getValue(row, "Team Name", headerMap),
+        fullTeam: getValue(row, "Full Team Name", headerMap),
+        color1: normalizeColor(getValue(row, "Color 1", headerMap)),
+        color2: normalizeColor(getValue(row, "Color 2", headerMap)),
+        color3: normalizeColor(getValue(row, "Color 3", headerMap))
       };
       teams.push(teamObject);
     }
-    
+
     console.log(`✅ Loaded ${teams.length} teams`);
     return teams;
   } catch (error) {

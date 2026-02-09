@@ -29,7 +29,7 @@ async function handleDivPreviewsUpdate(baseFolder) {
     // Clear cached URLs/branding for this league so each run sees fresh sheet data
     await leagueConfig.invalidateLeagueCache(baseFolder);
 
-    // Load league config, structured standings objects, and schedule data
+    // Load league config
     const [leagueData] = await Promise.all([
       leagueConfig.loadLeagueConfig(baseFolder)
     ]);
@@ -125,22 +125,38 @@ async function handleDivPreviewsUpdate(baseFolder) {
       const workingFileName = `${divAbb}_${DOC_ID}_working.psd`;
       const saveFile = await workingFolder.createFile(workingFileName, { overwrite: true });
 
+      ///// CHUNKING LOGIC /////
+      // Split into 2 equal chunks if 12+ teams, with first chunk getting extra if odd
+      const numOfTeams = divTeams.length;
+      const chunks = [];
+      if (numOfTeams < 12) {
+        chunks.push(divTeams);
+      } else {
+        // Split into 2 chunks: first chunk gets extra if odd
+        const chunkSize = Math.ceil(numOfTeams / 2);
+        chunks.push(divTeams.slice(0, chunkSize));
+        chunks.push(divTeams.slice(chunkSize));
+      }
+
       ///// PHOTOSHOP AUTOMATION /////
+      // Process each chunk separately
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunkTeams = chunks[chunkIndex];
+        const chunkNumTeams = chunkTeams.length;
 
       // Show which division is updating and how many teams it has
       statusEl.innerHTML = `Updating ${divAbb} (${divTeams.length} teams)...`;
 
-      await core.executeAsModal(async () => {
+        await core.executeAsModal(async () => {
         await app.open(templateFile);
 
-        // If running ALL, close the previous document after opening this one
-        if (previousDocId) {
+        // Only close previous document when running ALL divisions
+        if (userDiv === 'ALL' && previousDocId) {
           const prev = app.documents.find(docItem => docItem._id === previousDocId);
           if (prev) { 
             await delay(1000); 
             await prev.close(); 
           }
-          previousDocId = null;
         }
 
         //Define document and header
@@ -148,7 +164,8 @@ async function handleDivPreviewsUpdate(baseFolder) {
         // Save As immediately to avoid editing/saving the template
         if (doc.saveAs && doc.saveAs.psd) await doc.saveAs.psd(saveFile);
         const header = getByName(doc, 'HEADER');
-        const teams = getByName(doc, 'TEAMS');
+        const teamsGroup = getByName(doc, 'TEAMS'); // Photoshop layer group
+        const background = getByName(doc, 'BACKGROUND');
 
         // Header updates
         const divisionText = getByName(header, 'DIVISION');
@@ -160,18 +177,160 @@ async function handleDivPreviewsUpdate(baseFolder) {
         for (let i = 0; i < tierFolder.layers.length; i++) {
           tierFolder.layers[i].visible = (tierFolder.layers[i].name === conf);
         }
-        
+      
         // Division emblem: replace EMBLEM layer
-        await imageHandler.replaceLayerWithImage(emblem, `LOGOS/Division Emblems/${divAbb}_emblem.png`, baseFolder);
+        await imageHandler.replaceLayerWithImage(emblem, `LOGOS/Division Emblems/PNG/${divAbb}_emblem.png`, baseFolder);
       
-      
-      
-      
-      
-      
-      
-      })
+        // Read max area height from AREA rectangle layer in BACKGROUND folder
+        const areaLayer = getByName(background, 'AREA');
+        if (!areaLayer) {
+          throw new Error("AREA layer not found in BACKGROUND folder");
+        }
+        const areaBounds = areaLayer.boundsNoEffects;
+        const maxAreaHeight = Math.abs(areaBounds.bottom - areaBounds.top); // Height in pixels
+        
+        // Get team1 layer first to read its dimensions
+        const team1 = getByName(teamsGroup, 'TEAM 1');
+        let teamBox = getByName(team1, 'TEAM COLOR')
+        
+        // Read box height from the actual layer bounds (without effects)
+        // boundsNoEffects excludes drop shadows, strokes, etc. that can inflate the size
+        const team1Bounds = teamBox.boundsNoEffects;
+        const boxHeight = Math.abs(team1Bounds.bottom - team1Bounds.top); // Height in pixels
+        
+        // Create team boxes dynamically based on number of teams in this chunk
+        const numOfTeams = chunkNumTeams;
+        const defaultSpacing = boxHeight * 0.13; // Default spacing between team boxes (gap)
+        
+        // Calculate if teams fit at normal size (100%)
+        // Total height = (numOfTeams - 1) * spacing + boxHeight
+        // Where spacing = boxHeight + gap, so: (numOfTeams - 1) * (boxHeight + gap) + boxHeight
+        // Simplifies to: numOfTeams * boxHeight + (numOfTeams - 1) * gap
+        const totalHeight = (boxHeight * numOfTeams) + (defaultSpacing * (numOfTeams - 1)) ;
+        
+        let scale = 100;
+        let spacing = defaultSpacing;
+        
+        if (totalHeight <= maxAreaHeight) {
+          // Teams fit at normal size - use default spacing
+          scale = 100;
+          spacing = defaultSpacing;
+        } else {
+          scale = (maxAreaHeight / totalHeight) * 100
+          spacing  = defaultSpacing * (scale / 100)
+          }
+              
+        await scaleLayer(team1, scale);
+          
+        for (let p = 1; p < numOfTeams ; p++) {
+          const teamX = getByName(teamsGroup, 'TEAM ' + p);
+          if (teamX) {
+            await duplicate(teamX, 'TEAM ' + (p + 1), 0, (scale / 100) * (spacing + boxHeight));
+          }
+        }
+
+        // Apply vertical translation to center teams in available area
+        if (scale == 100) {
+          // Center vertically in available area
+          let translateY = (maxAreaHeight - totalHeight) / 2;
+          await translate(teamsGroup, 0, translateY);
+        }
+        
+        // Update each team slot with logo, color, and name
+        for (let i = 0; i < chunkNumTeams; i++) {
+          const teamSlot = getByName(teamsGroup, 'TEAM ' + (i + 1));
+          
+          const teamData = chunkTeams[i];
+          
+          // Get team info layers
+          const teamColorLayer = getByName(teamSlot, 'TEAM COLOR');
+          const teamLogoLayer = getByName(teamSlot, 'LOGO');
+          const teamCityLayer = getByName(teamSlot, 'TEAM CITY');
+          const teamNameLayer = getByName(teamSlot, 'TEAM NAME');
+          
+          // Team data is already available in teamData (from chunkTeams/divTeams)
+          const tColor = teamData.color1 || '000000';
+          const tCity = teamData.teamCity || '';
+          const tName = teamData.teamName || '';
+          const tFull = teamData.fullTeam || '';
+          
+          // Update team color
+          await fillColor(teamColorLayer, tColor);
+          
+          // Update team color stroke
+          await setStrokeColor(teamColorLayer, tColor);
+          
+          // Update team logo (try URL, then local path, then LeagueLogo)
+          const logoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
+          let ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, logoUrl);
+          if (!ok) ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
+          if (!ok) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
+
+          
+          // Update team name
+          const displayTeamCity = String(tCity).toUpperCase();
+          const displayTeamName = String(tName).toUpperCase();
+          teamCityLayer.textItem.contents = displayTeamCity.length > 20 ? (displayTeamCity.slice(0, 20) + '...') : displayTeamCity;
+          teamNameLayer.textItem.contents = displayTeamName.length > 20 ? (displayTeamName.slice(0, 20) + '...') : displayTeamName;
+
+          // If team name is longer than 15 characters, reduce font size by 10%
+          if (displayTeamName.length > 15 && teamNameLayer.textItem.characterStyle) {
+            const fontSize = Number(teamNameLayer.textItem.characterStyle.size);
+            if (isFinite(fontSize)) {
+              teamNameLayer.textItem.characterStyle.size = fontSize * 0.95;
+            }
+          }
+
+          // Set text color: if team color is white, use dark gray (252525), otherwise use white
+          setTextColor(teamCityLayer, tColor);
+          setTextColor(teamNameLayer, tColor);
+        }
+
+        // Save the document
+        await doc.save();
+        
+        // Export PNG to Exports/Preseason/Div-Preview
+        const exportFile = await prepareDivPreviewExport(gamedayFolder, divAbb, chunkIndex);
+        const cdnPath = exportHandler.buildCdnPath(baseFolder.name, 'Preseason', DOC_EXPORT, exportFile.name);
+        await exportHandler.exportPng(doc, exportFile, cdnPath, cloudExportEnabled);
+        
+        // Store this doc's ID to close it next time (only when running ALL)
+        if (userDiv === 'ALL') {
+          previousDocId = doc._id;
+        }
+        });
+        
+        // Close document after each chunk (only when running ALL and not the last chunk)
+        if (userDiv === 'ALL' && chunkIndex < chunks.length - 1) {
+          await core.executeAsModal(async () => {
+            const docToClose = app.documents.find(docItem => docItem._id === previousDocId);
+            if (docToClose) {
+              await delay(500);
+              await docToClose.close();
+              previousDocId = null;
+            }
+          });
+        }
+      }
     }
+    
+    // After all divisions are processed, close the last document (only when running ALL)
+    if (userDiv === 'ALL' && previousDocId) {
+      await core.executeAsModal(async () => {
+        const lastDoc = app.documents.find(docItem => docItem._id === previousDocId);
+        if (lastDoc) {
+          await delay(500);
+          await lastDoc.close();
+        }
+      });
+    }
+
+    if (userDiv === 'ALL') {
+      statusEl.innerHTML = `✅ Updated ${activeDivs.length} divisions`;
+    } else {
+      statusEl.innerHTML = `✅ Updated ${userDiv}`;
+    }
+
   } catch (err) {
     console.error("Division Preview error:", err);
     if (statusEl) statusEl.innerHTML = `❌ ${err.message}`;
@@ -198,6 +357,45 @@ async function fillColor(layer, hex) {
   ], { synchronousExecution: true });
 }
 
+async function setStrokeColor(layer, hex) {
+
+  const { r, g, b } = hexToRgb(hex);
+
+  await app.batchPlay([
+    { _obj: "select", _target: [{ _ref: "layer", _id: layer._id }], makeVisible: false, selectionModifier: { _enum: "selectionModifierType", _value: "replaceSelection" }, _isCommand: true }
+  ], { synchronousExecution: true });
+
+  await app.batchPlay([
+    {
+      _obj: "set",
+      _target: [
+        {
+          _enum: "ordinal",
+          _ref: "contentLayer",
+          _value: "targetEnum"
+        }
+      ],
+      to: {
+        _obj: "shapeStyle",
+        strokeStyle: {
+          _obj: "strokeStyle",
+          strokeEnabled: true,
+          strokeStyleContent: {
+            _obj: "solidColorLayer",
+            color: {
+              _obj: "RGBColor",
+              red: r,
+              green: g,
+              blue: b
+            }
+          },
+          strokeStyleVersion: 2
+        }
+      }
+    }
+  ], { synchronousExecution: true });
+}
+
 async function translate(layer, deltaX, deltaY) {
   const dx = Math.round(deltaX);
   const dy = Math.round(deltaY);
@@ -220,9 +418,23 @@ async function translate(layer, deltaX, deltaY) {
   ], { synchronousExecution: true });
 }
 
-async function scaleLayer(layer, percent) {
+async function scaleLayer(layer, percent, anchor = "top") {
   const value = Number(percent);
   if (!isFinite(value) || value <= 0) return;
+  
+  // Map anchor to quadCenterState enum value
+  const anchorMap = {
+    "top": "QCSTop",
+    "center": "QCSAverage",
+    "bottom": "QCSBottom",
+    "topLeft": "QCSTopLeft",
+    "topRight": "QCSTopRight",
+    "bottomLeft": "QCSBottomLeft",
+    "bottomRight": "QCSBottomRight"
+  };
+  
+  const centerState = anchorMap[anchor] || "QCSTop";
+  
   await app.batchPlay([
     {
       _obj: "select",
@@ -232,7 +444,7 @@ async function scaleLayer(layer, percent) {
     {
       _obj: "transform",
       _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }],
-      freeTransformCenterState: { _enum: "quadCenterState", _value: "QCSAverage" },
+      freeTransformCenterState: { _enum: "quadCenterState", _value: centerState },
       width: { _unit: "percentUnit", _value: value },
       height: { _unit: "percentUnit", _value: value }
     }
@@ -249,7 +461,7 @@ const setTextColor = (layer, backgroundColor) => {
   if (backgroundColor === 'ffffff') 
     color.rgb.hexValue = '252525';
   else color.rgb.hexValue = 'ffffff';
-  layer.textItem.color = color;
+  layer.textItem.characterStyle.color = color;
 };
 async function duplicate(group, newName, deltaX = 0, deltaY = 0) {
       // 1) Select source group
@@ -319,9 +531,8 @@ async function ensureFolderPath(rootFolder, segments) {
   return current;
 }
 
-async function prepareDivPreviewExport(gamedayFolder, week, divAbb, chunkIndex) {
-  const weekFolderName = `Week ${week}`;
-  const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', weekFolderName, DOC_EXPORT]);
+async function prepareDivPreviewExport(gamedayFolder, divAbb, chunkIndex) {
+  const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', 'Preseason', DOC_EXPORT]);
   const suffix = (typeof chunkIndex === 'number') ? `_${chunkIndex + 1}` : '';
   const exportFileName = `${divAbb}_${DOC_EXPORT}${suffix}.png`;
   return await exportFolder.createFile(exportFileName, { overwrite: true });
