@@ -51,8 +51,10 @@ sp-heading {
 }
 
 .league-logo {
-  max-width: 48px;
-  max-height: 48px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
   object-fit: contain;
   border-radius: 4px;
   padding: 0;
