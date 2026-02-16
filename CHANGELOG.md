@@ -1,3 +1,6 @@
+## 2.5.1
+- Schedule: Working files now include UG (Upcoming Games) or FS (Final Scores) in the filename so same-day upcoming and final score files no longer overwrite each other (e.g. `STG_SCHEDULE_working_Friday_UG.psd` and `STG_SCHEDULE_working_Friday_FS.psd`)
+
 ## 2.5.0
 - Added Division Previews
 - updated logoHandler to imageHandler

@@ -197,7 +197,9 @@ async function handleScheduleUpdate(baseFolder) {
               try { workingFolder = await templateFolder.getEntry('Working Files'); }
               catch { workingFolder = await templateFolder.createFolder('Working Files'); }
               const dayName = String(finalGames[0].day);
-              const workingFileName = `${conf}_${DOC_ID}_working_${dayName}.psd`;
+              const docTypeSuffix = docType === 'Final Scores' ? 'FS' : 'UG';
+              const chunkSuffix = (chunks.length > 1 && chunks[1] && chunks[1].length > 0) ? `_${a}` : '';
+              const workingFileName = `${conf}_${DOC_ID}_working_${dayName}_${docTypeSuffix}${chunkSuffix}.psd`;
               const saveFile = await workingFolder.createFile(sanitizeFilename(workingFileName), { overwrite: true });
               if (doc.saveAs && doc.saveAs.psd) await doc.saveAs.psd(saveFile);
               const header = getByName(doc, 'HEADER');
@@ -408,10 +410,10 @@ async function handleScheduleUpdate(baseFolder) {
                   // Highlight winning score (gold)
                   const s1 = Number(finalGames[i].score1);
                   const s2 = Number(finalGames[i].score2);
-                  if (!isNaN(s1) && !isNaN(s2)) {
-                    if (s1 > s2 && score1) setTextHex(score1, 'ffd800');
-                    else if (s2 > s1 && score2) setTextHex(score2, 'ffd800');
-                  }
+             //     if (!isNaN(s1) && !isNaN(s2)) {
+             //       if (s1 > s2 && score1) setTextHex(score1, 'ffd800');
+             //       else if (s2 > s1 && score2) setTextHex(score2, 'ffd800');
+             //     }
                 } else {
                   if (timeLayer) timeLayer.textItem.contents = String(finalGames[i].time || '').toUpperCase();
                 }
