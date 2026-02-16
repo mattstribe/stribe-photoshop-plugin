@@ -8,6 +8,16 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: radial-gradient(circle at top left, #1f2933, #050608 55%, #000000);
 }
+
+.panel-shell {
+  color: #f5f5f5;
+  padding: 12px 16px;
+  text-align: center;
+  min-height: 100vh;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top left, #1f2933, #050608 55%, #000000);
+}
   li:before {
     content: '• ';
     width: 3em;
@@ -15,7 +25,8 @@ body {
 
 /* Card containers for license + main UI */
 #license-screen,
-#main-ui {
+#main-ui,
+#merch-ui {
   max-width: 280px;
   margin: 10px auto 22px;
   padding: 16px 14px 18px;
@@ -38,7 +49,8 @@ sp-heading {
   margin: 0 auto 8px;
 }
 
-#main-ui sp-heading {
+#main-ui sp-heading,
+#merch-ui sp-heading {
   margin-bottom: 6px;
 }
 
@@ -222,7 +234,8 @@ sp-label {
 }
 
 /* Version + footer text */
-#main-ui sp-body.info-display:last-of-type {
+#main-ui sp-body.info-display:last-of-type,
+#merch-ui sp-body.info-display:last-of-type {
   justify-content: center;
   font-size: 11px;
   opacity: 0.8;
