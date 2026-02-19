@@ -5,7 +5,6 @@ const core = photoshop.core;
 const leagueConfig = require("./leagueConfig_200.js");
 const imageHandler = require("./imageHandler.js");
 const exportHandler = require("./exportHandler.js");
-const bracketHandler = require("./bracket.js");
 const fs = require("uxp").storage.localFileSystem;
 
 // Small delay helper (used when closing previous doc)
@@ -87,6 +86,15 @@ async function handleDivPreviewsUpdate(baseFolder) {
       const divAbb = activeDivs[d].abb
       const divColorHex = String(activeDivs[d].color1)
 
+      // Conference info (location/timezone)
+      let confLocation = null;
+      for (let i=0; i < confs.length; i++){
+        if (confs[i].conf === conf) {
+          confLocation = confs[i].location;
+          break;
+        }
+      }
+
       //Build teams for division
       const divTeams = [];
 
@@ -95,6 +103,7 @@ async function handleDivPreviewsUpdate(baseFolder) {
           divTeams.push(teams[i]);
       }
       if (divTeams.length === 0) continue;
+      
 
       // Navigate folders: Gameday Graphics inside league, or user selected Gameday Graphics directly
       let gamedayFolder;
@@ -147,7 +156,7 @@ async function handleDivPreviewsUpdate(baseFolder) {
       // Show which division is updating and how many teams it has
       statusEl.innerHTML = `Updating ${divAbb} (${divTeams.length} teams)...`;
 
-        await core.executeAsModal(async () => {
+      await core.executeAsModal(async () => {
         await app.open(templateFile);
 
         // Only close previous document when running ALL divisions
@@ -170,16 +179,26 @@ async function handleDivPreviewsUpdate(baseFolder) {
         // Header updates
         const divisionText = getByName(header, 'DIVISION');
         const emblem = getByName(header, 'EMBLEM');
+        const divisionColorLayer = getByName(header, 'HEADER COLOR');
+        const locationText = getByName(header, 'LOCATION');
         const tierFolder = getByName(header, 'TIER');
 
         divisionText.textItem.contents = division.toUpperCase()
+        if (locationText) locationText.textItem.contents = confLocation.toUpperCase();
+
         //tier visibility
-        for (let i = 0; i < tierFolder.layers.length; i++) {
-          tierFolder.layers[i].visible = (tierFolder.layers[i].name === conf);
+        if (tierFolder){
+          for (let i = 0; i < tierFolder.layers.length; i++) {
+            tierFolder.layers[i].visible = (tierFolder.layers[i].name === conf);
+          }
         }
-      
-        // Division emblem: replace EMBLEM layer
-        await imageHandler.replaceLayerWithImage(emblem, `LOGOS/Division Emblems/PNG/${divAbb}_emblem.png`, baseFolder);
+
+        // Division emblem: replace EMBLEM layer if it exists
+        if (emblem) {
+          await imageHandler.replaceLayerWithImage(emblem, `LOGOS/Division Emblems/PNG/${divAbb}_emblem.png`, baseFolder);
+        }
+
+        if (divisionColorLayer) await fillColor(divisionColorLayer, divColorHex);
       
         // Read max area height from AREA rectangle layer in BACKGROUND folder
         const areaLayer = getByName(background, 'AREA');
@@ -270,19 +289,21 @@ async function handleDivPreviewsUpdate(baseFolder) {
           // Update team name
           const displayTeamCity = String(tCity).toUpperCase();
           const displayTeamName = String(tName).toUpperCase();
-          teamCityLayer.textItem.contents = displayTeamCity.length > 20 ? (displayTeamCity.slice(0, 20) + '...') : displayTeamCity;
+          
+          if (teamCityLayer) teamCityLayer.textItem.contents = displayTeamCity.length > 20 ? (displayTeamCity.slice(0, 20) + '...') : displayTeamCity;
           teamNameLayer.textItem.contents = displayTeamName.length > 20 ? (displayTeamName.slice(0, 20) + '...') : displayTeamName;
 
-          // If team name is longer than 15 characters, reduce font size by 10%
-          if (displayTeamName.length > 15 && teamNameLayer.textItem.characterStyle) {
+          // Shrink team name text until it fits within the team color rectangle
+          const teamColorBounds = teamColorLayer.boundsNoEffects;
+          const maxRight = teamColorBounds.right;
+          while (teamNameLayer.boundsNoEffects.right > maxRight && teamNameLayer.textItem.characterStyle) {
             const fontSize = Number(teamNameLayer.textItem.characterStyle.size);
-            if (isFinite(fontSize)) {
-              teamNameLayer.textItem.characterStyle.size = fontSize * 0.95;
-            }
+            if (!isFinite(fontSize) || fontSize <= 1) break;
+            teamNameLayer.textItem.characterStyle.size = fontSize * 0.95;
           }
 
           // Set text color: if team color is white, use dark gray (252525), otherwise use white
-          setTextColor(teamCityLayer, tColor);
+          if (teamCityLayer) setTextColor(teamCityLayer, tColor);
           setTextColor(teamNameLayer, tColor);
         }
 

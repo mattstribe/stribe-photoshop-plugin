@@ -300,7 +300,7 @@ async function loadTeamInfo(baseFolder) {
     for (let n = 1; n < teamInfo.length; n++) {
       const row = teamInfo[n];
       const teamObject = {
-        conf: getValue(row, "Conf", headerMap) || getValue(row, "Tier", headerMap),
+        conf: getValue(row, "Conference", headerMap) || getValue(row, "Tier", headerMap),
         div: getValue(row, "Division", headerMap),
         abb: getValue(row, "Abb", headerMap),
         teamCity: getValue(row, "Team City", headerMap),
