@@ -251,7 +251,7 @@ async function handleDivPreviewsUpdate(baseFolder) {
         // Apply vertical translation to center teams in available area
         if (scale == 100) {
           // Center vertically in available area
-          let translateY = (maxAreaHeight - totalHeight) / 2;
+          let translateY = (maxAreaHeight - totalHeight) / 3;
           await translate(teamsGroup, 0, translateY);
         }
         
