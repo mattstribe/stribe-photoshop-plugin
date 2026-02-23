@@ -20,81 +20,37 @@ async function verifyLicense(email, licenseKey) {
   }
 }
 
-// ---- Initial Check ----
+// ---- Initial Check (TEMPORARILY BYPASSED: always launch) ----
 async function checkLicenseAndLaunch() {
-  const email = localStorage.getItem("userEmail");
-  const key = localStorage.getItem("licenseKey");
-  const lastCheck = Number(localStorage.getItem("licenseValidatedAt")) || 0;
-
-  if (!email || !key) {
-    showLicenseScreen();
-    return;
-  }
-
-  // ✅ Recent validation (cached)
-  if (Date.now() - lastCheck < LICENSE_RECHECK_INTERVAL_DAYS * 24 * 60 * 60 * 1000) {
-    launchApp();
-    // silent background recheck
-    verifyLicense(email, key).then(isValid => {
-      if (!isValid) {
-        alert("Your license is no longer valid. Please re-activate.");
-        showLicenseScreen();
-      }
-    });
-    return;
-  }
-
-  // ⏳ Full validation (7+ days)
-  const isValid = await verifyLicense(email, key);
-  if (isValid) {
-    localStorage.setItem("licenseValidatedAt", Date.now());
-    launchApp();
-  } else {
-    showLicenseScreen("License expired or revoked.");
-  }
+  launchApp();
 }
 
-// ---- Manual Activation ----
+// ---- Manual Activation (no-op while license disabled) ----
 async function handleActivation() {
-  const email = document.getElementById("emailInput").value.trim();
-  const key = document.getElementById("keyInput").value.trim();
-  const errorEl = document.getElementById("licenseError");
-
-  if (!email || !key) {
-    errorEl.textContent = "Please enter both email and license key.";
-    return;
-  }
-
-  errorEl.textContent = "Checking license...";
-  const isValid = await verifyLicense(email, key);
-
-  if (isValid) {
-    localStorage.setItem("userEmail", email);
-    localStorage.setItem("licenseKey", key);
-    localStorage.setItem("licenseValidatedAt", Date.now());
-    launchApp();
-  } else {
-    errorEl.textContent = "Invalid license. Please try again.";
-  }
+  launchApp();
 }
 
 // ---- Logout ----
 function logoutUser() {
-  localStorage.clear();
-  showLicenseScreen("You’ve been logged out.");
+  localStorage.removeItem("userEmail");
+  localStorage.removeItem("licenseKey");
+  localStorage.removeItem("licenseValidatedAt");
+  // License screen disabled
+  // showLicenseScreen("You’ve been logged out.");
 }
 
 // ---- UI Helpers ----
-function showLicenseScreen(message = "") {
-  document.getElementById("license-screen").style.display = "block";
-  document.getElementById("main-ui").style.display = "none";
-  document.getElementById("licenseError").textContent = message;
+function showLicenseScreen(_message = "") {
+  // No-op while license disabled
 }
 
 function launchApp() {
-  document.getElementById("license-screen").style.display = "none";
-  document.getElementById("main-ui").style.display = "block";
-  ui.initializeUI()}
+  const licenseEl = document.getElementById("license-screen");
+  const mainEl = document.getElementById("main-ui");
+  if (licenseEl) licenseEl.style.display = "none";
+  if (mainEl) mainEl.style.display = "block";
+  ui.initializeUI();
+}
 
 module.exports = {
 checkLicenseAndLaunch,

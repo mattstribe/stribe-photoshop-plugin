@@ -5,8 +5,8 @@
 </head>
 <body>
 
-  <!-- Licensing Screen (new) -->
-  <div id="license-screen">
+  <!-- Licensing Screen (hidden while license disabled) -->
+  <div id="license-screen" style="display:none;">
     <sp-heading>🔐 Activate License</sp-heading>
     <div class="input-wrap">
       <label for="emailInput">Email</label>
@@ -23,8 +23,8 @@
     <sp-button id="btnActivate">ACTIVATE</sp-button>
   </div>
 
-  <!-- Your existing UI (hidden until activation) -->
-  <div id="main-ui" style="display:none;">
+  <!-- Main UI (shown by default while license disabled) -->
+  <div id="main-ui">
     <img src="icons/STRIBE_logo.png" id="pluginLogo" />
     <sp-heading>Weekly Updates</sp-heading>
 
