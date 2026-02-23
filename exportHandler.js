@@ -31,7 +31,8 @@ function isCloudExportEnabled() {
 
 // Option 1: Use a serverless function/API endpoint as a proxy (RECOMMENDED)
 // This is simpler and more secure than implementing S3 auth in the plugin
-const EXPORT_UPLOAD_API_URL = "https://license-server-five-red.vercel.app/api/upload"; // e.g., "https://your-api.vercel.app/api/upload"
+const EXPORT_UPLOAD_API_URL = "https://license-server-five-red.vercel.app/api/upload";
+const EXPORT_PLUGIN_ID = "weekly-updates";
 
 // Option 2: Direct R2 S3-compatible upload (requires AWS Signature v4 - complex)
 // If you want to use this, you'll need to implement proper AWS Signature v4
@@ -63,7 +64,8 @@ async function uploadViaAPI(fileEntry, remotePath) {
       headers: {
         'Content-Type': 'application/octet-stream',
         'X-File-Path': remotePath, // Send path as header
-        'X-File-Name': fileEntry.name
+        'X-File-Name': fileEntry.name,
+        'X-Plugin-ID': EXPORT_PLUGIN_ID
       },
       body: arrayBuffer
     });
@@ -191,4 +193,3 @@ module.exports = {
   buildCdnPath,
   uploadToR2
 };
-
