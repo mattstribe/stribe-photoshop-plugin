@@ -104,7 +104,7 @@
   "requiredPermissions": {
     "network": {
       "domains": [
-        "license-server-five-red.vercel.app",
+        "stribe-api.vercel.app",
         "https://docs.google.com",
         "pub-3c06366d547445298c77e04b7c3c77ad.r2.dev"
       ]

@@ -31,7 +31,7 @@ function isCloudExportEnabled() {
 
 // Option 1: Use a serverless function/API endpoint as a proxy (RECOMMENDED)
 // This is simpler and more secure than implementing S3 auth in the plugin
-const EXPORT_UPLOAD_API_URL = "https://license-server-five-red.vercel.app/api/upload";
+const EXPORT_UPLOAD_API_URL = "https://stribe-api.vercel.app/api/upload";
 const EXPORT_PLUGIN_ID = "weekly-updates";
 
 // Option 2: Direct R2 S3-compatible upload (requires AWS Signature v4 - complex)
