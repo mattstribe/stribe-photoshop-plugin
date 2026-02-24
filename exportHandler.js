@@ -181,9 +181,10 @@ async function exportPng(doc, exportFile, cdnPath = null, cloudExportEnabled = n
  * @returns {string} - CDN path (e.g., "exports/VIBHL/week1/standings/VICM12_Standings_1.png")
  */
 function buildCdnPath(leagueName, week, type, filename) {
-  const safeLeague = encodeURIComponent(leagueName);
-  const safeType = encodeURIComponent(type);
-  const safeFilename = encodeURIComponent(filename);
+  const safe = (s) => String(s ?? "").trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
+  const safeLeague = safe(leagueName) || "league";
+  const safeType = safe(type) || "export";
+  const safeFilename = safe(filename) || "image.png";
   return `${safeLeague}/exports/Week-${week}/${safeType}/${safeFilename}`;
 }
 
