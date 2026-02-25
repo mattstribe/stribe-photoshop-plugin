@@ -5,7 +5,7 @@
 
 const MASTER_LEAGUE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbCy1pnMHPC-i_MU3x2U8ESVtSeDu7M8RrDbNxl0D-aT-TFlJJ9o7KDMyugap2vlQgTCF8y5FSwLT2/pub?output=csv";
 
-// Simple in‑memory caches so we don’t refetch the same data repeatedly
+// Simple in‑memory caches so we don't refetch the same data repeatedly
 // leagueName -> {
 //   divisionUrl, teamUrl, scheduleUrl,
 //   standingsUrl, goalieUrl, playerUrl

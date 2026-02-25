@@ -139,7 +139,7 @@ function updateDivisionDisplay() {
   updateActionButtons();
 }
 
-// ✅ Export only what’s needed
+// ✅ Export only what's needed
 module.exports = {
   initializeUI,
   updateDivisionDisplay,
