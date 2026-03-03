@@ -70,7 +70,7 @@ async function handleScheduleUpdate(baseFolder) {
       if (selectedConf && confName !== selectedConf) continue;
 
       // Base filter: this week or next week
-      let confGames = schedule.filter(g => g.conf === confName && (Number(g.week) === week || Number(g.week) === week + 1));
+      let confGames = schedule.filter(g => g.conf === confName && String(g.week).trim() !== '' && (Number(g.week) === week || Number(g.week) === week + 1));
 
       // If a specific division is selected, restrict to that division
       if (selectedDivAbb) {
@@ -80,6 +80,26 @@ async function handleScheduleUpdate(baseFolder) {
       if (confGames.length) 
         activeConfs.push(confGames);
     }
+
+    // ── DEBUG: dump every game collected for the current week ──
+    console.log(`\n========== SCHEDULE DEBUG (Week ${week}, Year ${year}) ==========`);
+    console.log(`Filter: input="${input || 'ALL'}", selectedConf=${selectedConf}, selectedDivAbb=${selectedDivAbb}`);
+    console.log(`Total conferences with games: ${activeConfs.length}`);
+    for (let dc = 0; dc < activeConfs.length; dc++) {
+      const cg = activeConfs[dc];
+      console.log(`\n── Conference: ${cg[0].conf} (${cg.length} games) ──`);
+      for (let dg = 0; dg < cg.length; dg++) {
+        const g = cg[dg];
+        console.log(
+          `  [${dg}] week=${g.week} | date=${g.date} | gameType=${g.gameType} | season=${g.season}` +
+          ` | div1=${g.div1} | ${g.team1} vs ${g.team2}` +
+          (g.round ? ` | round=${g.round}` : '') +
+          (g.score1 ? ` | score=${g.score1}-${g.score2}` : '')
+        );
+      }
+    }
+    console.log(`====================================================\n`);
+    // ── END DEBUG ──
 
     if (!activeConfs.length) {
       statusEl.textContent = `⚠️ No games found for ${input || 'ALL'} (Week ${week})`;

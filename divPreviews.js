@@ -311,7 +311,7 @@ async function handleDivPreviewsUpdate(baseFolder) {
         await doc.save();
         
         // Export PNG to Exports/Preseason/Div-Preview
-        const exportFile = await prepareDivPreviewExport(gamedayFolder, divAbb, chunkIndex);
+        const exportFile = await prepareDivPreviewExport(gamedayFolder, conf, divAbb, chunkIndex);
         const cdnPath = exportHandler.buildCdnPath(baseFolder.name, 'Preseason', DOC_EXPORT, exportFile.name);
         await exportHandler.exportPng(doc, exportFile, cdnPath, cloudExportEnabled);
         
@@ -552,9 +552,9 @@ async function ensureFolderPath(rootFolder, segments) {
   return current;
 }
 
-async function prepareDivPreviewExport(gamedayFolder, divAbb, chunkIndex) {
-  const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', 'Preseason', DOC_EXPORT]);
-  const suffix = (typeof chunkIndex === 'number') ? `_${chunkIndex + 1}` : '';
+async function prepareDivPreviewExport(gamedayFolder, conf, divAbb, chunkIndex) {
+  const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', 'Preseason', DOC_EXPORT, conf]);
+  const suffix = (typeof chunkIndex === 'number') ? `_${chunkIndex + 1}` : '';than
   const exportFileName = `${divAbb}_${DOC_EXPORT}${suffix}.png`;
   return await exportFolder.createFile(exportFileName, { overwrite: true });
 }
