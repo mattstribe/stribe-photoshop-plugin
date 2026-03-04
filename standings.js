@@ -503,9 +503,9 @@ const getByName = (parent, name) => {
 
 const setTextColor = (layer, backgroundColor) => {
   const color = new app.SolidColor();
-  if (backgroundColor === 'ffffff')
-    color.rgb.hexValue = '252525';
-  else color.rgb.hexValue = 'ffffff';
+  const { r, g, b } = hexToRgb(backgroundColor);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  color.rgb.hexValue = luminance > 0.90 ? '252525' : 'ffffff';
   layer.textItem.characterStyle.color = color;
 };
 
