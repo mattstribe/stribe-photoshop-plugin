@@ -554,7 +554,7 @@ async function ensureFolderPath(rootFolder, segments) {
 
 async function prepareDivPreviewExport(gamedayFolder, conf, divAbb, chunkIndex) {
   const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', 'Preseason', DOC_EXPORT, conf]);
-  const suffix = (typeof chunkIndex === 'number') ? `_${chunkIndex + 1}` : '';than
+  const suffix = (typeof chunkIndex === 'number') ? `_${chunkIndex + 1}` : '';
   const exportFileName = `${divAbb}_${DOC_EXPORT}${suffix}.png`;
   return await exportFolder.createFile(exportFileName, { overwrite: true });
 }
