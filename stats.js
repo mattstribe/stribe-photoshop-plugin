@@ -42,6 +42,11 @@ async function handleStatsUpdate(baseFolder) {
     const { divs, confs, teams } = leagueData;
     const { schedule, week, year } = scheduleData;
 
+    // Normalize .div fields so leagues that store "div conf" order match the canonical "conf div" form.
+    [playerStats, goalieStats, playoffPlayerStats, playoffGoalieStats].forEach(arr => {
+      arr.forEach(t => { t.div = leagueConfig.normalizeDivName(t.div, divs); });
+    });
+
     // Get user division input from UI (converts abbreviations automatically)
     const userDiv = leagueConfig.getUserDivision(divs);
     console.log(`Selected division: ${userDiv}`);

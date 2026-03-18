@@ -43,7 +43,9 @@ async function handleStandingsUpdate(baseFolder) {
     const userDiv = leagueConfig.getUserDivision(divs);
     console.log(`Selected division for STANDINGS: ${userDiv}`);
 
-    // Use structured standings objects from leagueConfig
+    // Use structured standings objects from leagueConfig.
+    // Normalize .div so leagues that store "div conf" order match the canonical "conf div" form.
+    standingsData.forEach(t => { t.div = leagueConfig.normalizeDivName(t.div, divs); });
     const teamStats = standingsData;
 
     // Build active divisions list.
@@ -102,7 +104,6 @@ async function handleStandingsUpdate(baseFolder) {
     }
 
     ///// SEPARATE INFORMATION INTO DIVISIONS /////
-
 
     // Track previously opened doc id so we can close it after the next opens (when running ALL)
     let previousDocId = null;

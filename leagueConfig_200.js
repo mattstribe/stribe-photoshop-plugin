@@ -513,8 +513,8 @@ async function loadSchedule(baseFolder) {
       const gameWeekNum = Number(getValue(row, 'Week', headerMap));
       if (isNaN(gameWeekNum) || gameWeekNum < 0) continue;
 
-      const div1Full = getValue(row, 'Div 1', headerMap);
-      const div2Full = getValue(row, 'Div 2', headerMap);
+      const div1Full = normalizeDivName(getValue(row, 'Div 1', headerMap), divs);
+      const div2Full = normalizeDivName(getValue(row, 'Div 2', headerMap), divs);
 
       let div1name = '', div1conf = '', div1abb = '';
       let div2name = '', div2conf = '', div2abb = '';
@@ -629,6 +629,20 @@ function getUserDivision(divs) {
   return userDiv;
 }
 
+/**
+ * Given a raw combined division string from a spreadsheet (e.g. "East NBHL" or "NBHL East")
+ * and the loaded divs array, return the canonical "conf div" form.
+ * Handles leagues that store the identifier as either "conf div" or "div conf".
+ */
+function normalizeDivName(rawValue, divs) {
+  if (!rawValue || !divs || !divs.length) return rawValue;
+  // Already canonical?
+  if (divs.some(d => d.conf + ' ' + d.div === rawValue)) return rawValue;
+  // Try reversed order
+  const match = divs.find(d => d.div + ' ' + d.conf === rawValue);
+  return match ? match.conf + ' ' + match.div : rawValue;
+}
+
 // Export functions
 module.exports = {
   parseCSV,
@@ -643,5 +657,6 @@ module.exports = {
   loadStandings,
   loadSchedule,
   loadLeagueConfig,
-  getUserDivision
+  getUserDivision,
+  normalizeDivName
 };
