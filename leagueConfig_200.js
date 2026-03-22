@@ -220,18 +220,22 @@ async function loadDivisionInfo(baseFolder) {
   try {
     const divInfo = await getBrandingSheet(baseFolder, "Divisions");
     
-    // SETUP DIVISION INFO
+    const headerMap = createHeaderMap(divInfo[0]);
     const divs = [];
     
     for (let n = 1; n < divInfo.length; n++) {
+      const row = divInfo[n];
       const divObject = {
-        conf: divInfo[n][0],
-        div: divInfo[n][1],
-        abb: divInfo[n][2],
-        color1: normalizeColor(divInfo[n][3]),
-        color2: normalizeColor(divInfo[n][4]),
-        divShort: divInfo[n][6]
+        conf:    getValue(row, 'Tier', headerMap) || getValue(row, 'Conference', headerMap),
+        div:     getValue(row, 'Division', headerMap),
+        abb:     getValue(row, 'Abb', headerMap),
+        color1:  normalizeColor(getValue(row, 'Color 1', headerMap)),
+        color2:  normalizeColor(getValue(row, 'Color 2', headerMap)),
+        timeZone: getValue(row, 'Time Zone', headerMap),
+        location: getValue(row, 'Location', headerMap),
+        divShort: getValue(row, 'divShort', headerMap)
       };
+      if (!divObject.conf && !divObject.div) continue;
       divs.push(divObject);
     }
     
@@ -251,27 +255,26 @@ async function loadConferenceInfo(baseFolder) {
   try {
     const divInfo = await getBrandingSheet(baseFolder, "Divisions");
     
-    // SETUP CONFERENCE INFO
+    const headerMap = createHeaderMap(divInfo[0]);
     const confs = [];
     
     for (let n = 1; n < divInfo.length; n++) {
-      const confName = divInfo[n][0];
+      const row = divInfo[n];
+      const confName = getValue(row, 'Tier', headerMap) || getValue(row, 'Conference', headerMap);
+      if (!confName) continue;
+
       let isUnique = true;
-      
-      // Manual check for uniqueness
       for (let k = 0; k < confs.length; k++) {
-        if (confs[k].conf === confName) {
-          isUnique = false;
-          break;
-        }
+        if (confs[k].conf === confName) { isUnique = false; break; }
       }
       
       if (isUnique) {
         const confObject = {
-          conf: divInfo[n][0],
-          color: normalizeColor(divInfo[n][3]),
-          timeZone: divInfo[n][4],
-          location: divInfo[n][5]
+          conf:     confName,
+          color:    normalizeColor(getValue(row, 'Color 1', headerMap)),
+          color2:   normalizeColor(getValue(row, 'Color 2', headerMap)),
+          timeZone: getValue(row, 'Time Zone', headerMap),
+          location: getValue(row, 'Location', headerMap)
         };
         confs.push(confObject);
       }
@@ -308,7 +311,8 @@ async function loadTeamInfo(baseFolder) {
         fullTeam: getValue(row, "Full Team Name", headerMap),
         color1: normalizeColor(getValue(row, "Color 1", headerMap)),
         color2: normalizeColor(getValue(row, "Color 2", headerMap)),
-        color3: normalizeColor(getValue(row, "Color 3", headerMap))
+        color3: normalizeColor(getValue(row, "Color 3", headerMap)),
+        powerRanking: getValue(row, "PR", headerMap)
       };
       teams.push(teamObject);
     }

@@ -411,8 +411,9 @@ async function handleStatsUpdate(baseFolder) {
               if (!ok) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
               // Update text layers
-              firstNameLayer.textItem.contents = topPoints[i].firstName.toUpperCase();
-              lastNameLayer.textItem.contents = sanitizeLastName(topPoints[i].lastName).toUpperCase();
+              const { displayFirst: ptFirst, displayLast: ptLast } = resolvePlayerName(topPoints[i].firstName, topPoints[i].lastName);
+              firstNameLayer.textItem.contents = ptFirst;
+              lastNameLayer.textItem.contents = ptLast;
               teamNameLayer.textItem.contents = (() => { const u = String(topPoints[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
               goalsLayer.textItem.contents = topPoints[i].goals;
               assistsLayer.textItem.contents = topPoints[i].assists;
@@ -463,8 +464,9 @@ async function handleStatsUpdate(baseFolder) {
               if (!goalOk) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
               // Update text layers
-              firstNameLayer.textItem.contents = topGoals[i].firstName.toUpperCase();
-              lastNameLayer.textItem.contents = sanitizeLastName(topGoals[i].lastName).toUpperCase();
+              const { displayFirst: glFirst, displayLast: glLast } = resolvePlayerName(topGoals[i].firstName, topGoals[i].lastName);
+              firstNameLayer.textItem.contents = glFirst;
+              lastNameLayer.textItem.contents = glLast;
               teamNameLayer.textItem.contents = (() => { const u = String(topGoals[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
               if (goalsHeader.textItem.contents == 'PTS/GP')
                   goalsLayer.textItem.contents = topGoals[i].ppg;
@@ -526,8 +528,9 @@ async function handleStatsUpdate(baseFolder) {
               if (!gaaOk) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
               // Update text layers
-              firstNameLayer.textItem.contents = topGAA[i].firstName.toUpperCase();
-              lastNameLayer.textItem.contents = sanitizeLastName(topGAA[i].lastName).toUpperCase();
+              const { displayFirst: gaFirst, displayLast: gaLast } = resolvePlayerName(topGAA[i].firstName, topGAA[i].lastName);
+              firstNameLayer.textItem.contents = gaFirst;
+              lastNameLayer.textItem.contents = gaLast;
               teamNameLayer.textItem.contents = (() => { const u = String(topGAA[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
               gaaLayer.textItem.contents = topGAA[i].GAA;
               minimumLayer.textItem.contents = `(MIN. ${GPmin}GP)`;
@@ -649,6 +652,20 @@ module.exports = {
 };
 
 // ===== Helpers (bottom of file) =====
+
+// If the last name is just an initial (e.g. "R."), put the first name in the
+// last name layer and leave the first name layer blank.
+function resolvePlayerName(firstName, lastName) {
+  const isInitial = String(lastName || '').trim().endsWith('.');
+  if (isInitial) {
+    const last = String(lastName || '').trim();
+    return { displayFirst: ' ', displayLast: (String(firstName || '') + ' ' + last).toUpperCase() };
+  }
+  return {
+    displayFirst: String(firstName || '').toUpperCase(),
+    displayLast: sanitizeLastName(lastName).toUpperCase()
+  };
+}
 
 function sanitizeLastName(lastName) {
     let s = String(lastName || '');
