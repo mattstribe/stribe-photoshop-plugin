@@ -45,6 +45,13 @@ document.getElementById("btnDivPreviews").addEventListener("click", async () => 
   await divPreviewsModule.handleDivPreviewsUpdate(baseFolder);
 });
 
+document.getElementById("btnActiveDivisions").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const activeDivisionsModule = require("./activeDivisions.js");
+  await activeDivisionsModule.handleActiveDivisionsUpdate(baseFolder);
+});
+
 // Division
 document.getElementById("divisionInput").addEventListener("input", ui.updateDivisionDisplay);
 

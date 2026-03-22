@@ -90,13 +90,16 @@ function updateActionButtons() {
   const standingsBtn = document.getElementById("btnStandings");
   const statsBtn = document.getElementById("btnStats");
   const divPreviewsBtn = document.getElementById("btnDivPreviews");
+  const activeDivisionsBtn = document.getElementById("btnActiveDivisions");
 
   if (!hasFolderSelected) {
     scheduleBtn.disabled = standingsBtn.disabled = statsBtn.disabled = true;
     if (divPreviewsBtn) divPreviewsBtn.disabled = true;
+    if (activeDivisionsBtn) activeDivisionsBtn.disabled = true;
     return;
   }
   if (divPreviewsBtn) divPreviewsBtn.disabled = false;
+  if (activeDivisionsBtn) activeDivisionsBtn.disabled = false;
 
   const divisionInput = document.getElementById("divisionInput").value.trim().toUpperCase();
   const isAll = divisionInput === "ALL";

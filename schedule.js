@@ -116,6 +116,9 @@ async function handleScheduleUpdate(baseFolder) {
       const division = divGames[0].division1
       const conf = divGames[0].conf;
 
+      // Counter for export filenames — resets to 1 for each division
+      let fileCounter = 1;
+
       // Division color + conference location
       let divColorHex = 'ffffff';
       let divTimeZone = '';
@@ -486,9 +489,10 @@ async function handleScheduleUpdate(baseFolder) {
               }
 
               // Export per chunk
-              const exportFile = await prepareScheduleExport(gamedayFolder, week, docType, divAbb, dateShort, gameType, a);
+              const exportFile = await prepareScheduleExport(gamedayFolder, week, docType, divAbb, fileCounter);
               const cdnPath = exportHandler.buildCdnPath(baseFolder.name, week, docType, exportFile.name);
               await exportHandler.exportPng(doc, exportFile, cdnPath, cloudExportEnabled);
+              fileCounter++;
 
               previousDocId = doc._id;
               await doc.save();
@@ -657,13 +661,10 @@ async function ensureFolderPath(rootFolder, segments) {
 }
 
 // Prepare and return a FileEntry for Schedule PNG export
-async function prepareScheduleExport(gamedayFolder, week, docType, conf, dateShort, type, chunkIndex) {
+async function prepareScheduleExport(gamedayFolder, week, docType, divAbb, fileCounter) {
   const weekFolderName = `Week ${week}`;
   const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', weekFolderName, docType]);
-  const safeConf = sanitizeFilename(conf);
-  const safeDate = sanitizeFilename(dateShort);
-  const safeType = sanitizeFilename(type);
-  const fileName = `${safeConf}_${safeDate}_${safeType}_${chunkIndex}.png`;
+  const fileName = `${divAbb}_SCHEDULE_${fileCounter}.png`;
   return await exportFolder.createFile(fileName, { overwrite: true });
 }
 

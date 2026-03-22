@@ -4,7 +4,6 @@ const core = photoshop.core;
 const leagueConfig = require("./leagueConfig_200.js");
 const imageHandler = require("./imageHandler.js");
 const exportHandler = require("./exportHandler.js");
-const fs = require("uxp").storage.localFileSystem;
 
 // Helper
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -114,13 +113,15 @@ async function handleScheduleUpdate(baseFolder) {
     for (let d = 0; d < activeDivs.length; d++) {
       const divGames = activeDivs[d];
       const divAbb = divGames[0].div1;
+      const division = divGames[0].division1
       const conf = divGames[0].conf;
 
       // Division color + conference location
       let divColorHex = 'ffffff';
+      let divTimeZone = '';
       let divLocation = '';
       for (let i = 0; i < divs.length; i++) {
-        if (divs[i].abb === divAbb) { divColorHex = divs[i].color1; break; }
+        if (divs[i].abb === divAbb) { divColorHex = divs[i].color1; divTimeZone = divs[i].timeZone || ''; break; }
       }
       for (let i = 0; i < confs.length; i++) {
         if (confs[i].conf === conf) { divLocation = confs[i].location; break; }
@@ -221,11 +222,18 @@ async function handleScheduleUpdate(baseFolder) {
               if (doc.saveAs && doc.saveAs.psd) await doc.saveAs.psd(saveFile);
               const header = getByName(doc, 'HEADER');
               const matchups = getByName(doc, 'MATCHUPS');
+              const background = getByName(doc, 'BACKGROUND');
+              const sponsorsFolder = getByName(doc, 'Sponsors');
+              const sponsorBar = sponsorsFolder ? getByName(sponsorsFolder, 'SPONSOR BAR') : null;
+              const backgroundBlack = background ? getByName(background, 'BLACK') : null;
+              const backgroundWhite = background ? getByName(background, 'WHITE') : null;
 
               // Header layers
               const headerText = getByName(header, 'HEADING');
               const dateText = getByName(header, 'DATE');
-              const locationText = getByName(header, 'LOCATION');
+              const divisionText = getByName(header, 'DIVISION');
+              const emblemLayer = getByName(header, 'EMBLEM');
+              //const locationText = getByName(header, 'LOCATION');
               const divisionColorLayer = getByName(header, 'HEADER COLOR');
 
               // Set header
@@ -235,40 +243,79 @@ async function handleScheduleUpdate(baseFolder) {
               } else if (gameType === 'Playoffs') {
                 headerTextValue = 'PLAYOFFS';
               } else {
-                headerTextValue = 'SCHEDULE';
+                headerTextValue = 'UPCOMING GAMES';
               }
               headerText.textItem.contents = headerTextValue;
               dateText.textItem.contents = String(dateValue).toUpperCase();
-              locationText.textItem.contents = String(divLocation).toUpperCase();
+              if (divisionText) {
+                divisionText.textItem.contents = (division + ' ' + conf).toUpperCase();
+              }
+              const tierFolder = getByName(header, 'TIER');
+              if (tierFolder) {
+                for (let i = 0; i < tierFolder.layers.length; i++) {
+                  tierFolder.layers[i].visible = (tierFolder.layers[i].name === conf);
+                }
+              }
+              if (emblemLayer) {
+                await imageHandler.replaceLayerWithImage(emblemLayer, `LOGOS/Division Emblems/PNG/${divAbb}_emblem.png`, baseFolder);
+              }
+
+              const sponsorDir = 'LOGOS/Sponsor/Division Sponsors/Sponsor Bars/';
+              let sponsorSuffix = '';
+              if (backgroundBlack) sponsorSuffix = 'BLACK';
+              else if (backgroundWhite) sponsorSuffix = 'WHITE';
+              const sponsorBaseFile = divAbb + '_Sponsors.psd';
+              const sponsorBasePath = sponsorDir + sponsorBaseFile;
+              let ok = false;
+              if (sponsorSuffix) {
+                const sponsorVariantFile = divAbb + '_Sponsors_' + sponsorSuffix + '.psd';
+                const variantPath = sponsorDir + sponsorVariantFile;
+                ok = await imageHandler.replaceLayerWithImage(sponsorBar, variantPath, baseFolder);
+              }
+              if (!ok) {
+                await imageHandler.replaceLayerWithImage(sponsorBar, sponsorBasePath, baseFolder);
+              }
+            
+
+              //locationText.textItem.contents = String(divLocation).toUpperCase();
               await fillColor(divisionColorLayer, divColorHex);
 
-              // Create boxes for number of games (follow JSX logic)
+              // Dynamic box creation using AREA layer bounds
               const numOfGames = finalGames.length;
-              if (numOfGames === 1) {
-                await translate(matchups, 0, 300);
-              } else if (numOfGames > 1 && numOfGames < 7) {
-                for (let p = 2; p < numOfGames + 1; p++) {
-                  const matchX = getByName(matchups, 'MATCH ' + (p - 1));
-                  if (!matchX) break;
-                  await duplicate(matchX, 'MATCH ' + p, 0, 150);
-                }
-                const adjust = 240 - (60 * (numOfGames - 2));
-                await translate(matchups, 0, adjust);
-              } else if (numOfGames === 7) {
-                for (let p = 2; p < numOfGames + 1; p++) {
-                  const matchX = getByName(matchups, 'MATCH ' + (p - 1));
-                  if (!matchX) break;
-                  await duplicate(matchX, 'MATCH ' + p, 0, 130);
-                }
-              } else if (numOfGames > 7 && numOfGames < 11) {
-                let scalePercent = 90 - 10*(numOfGames - 8);
-                await translate(matchups, 0, -20);
-                await scaleLayer(matchups, scalePercent);
-                for (let p = 2; p < numOfGames + 1; p++) {
-                  const matchX = getByName(matchups, 'MATCH ' + (p - 1));
-                  if (!matchX) break;
-                  await duplicate(matchX, 'MATCH ' + p, 0, (130*scalePercent)/100);
-                }
+              const areaLayer = background ? getByName(background, 'AREA') : null;
+              if (!areaLayer) throw new Error("AREA layer not found in BACKGROUND group");
+
+              const areaBounds = areaLayer.boundsNoEffects;
+              const maxAreaHeight = Math.abs(areaBounds.bottom - areaBounds.top);
+
+              const match1 = getByName(matchups, 'MATCH 1');
+              const match1Bounds = match1.boundsNoEffects;
+              const boxHeight = Math.abs(match1Bounds.bottom - match1Bounds.top);
+
+              const defaultSpacing = boxHeight * 0.05;
+              const totalHeight = (boxHeight * numOfGames) + (defaultSpacing * (numOfGames - 1));
+
+              let scale = 100;
+              let spacing = defaultSpacing;
+              if (totalHeight > maxAreaHeight) {
+                scale = (maxAreaHeight / totalHeight) * 100;
+                spacing = defaultSpacing * (scale / 100);
+              }
+
+              await scaleLayer(match1, scale, 'top');
+
+              // Round the step to a whole pixel so sub-pixel errors don't accumulate
+              // across copies (each duplicate is offset from the previous one)
+              const step = Math.round((scale / 100) * (spacing + boxHeight));
+
+              for (let p = 1; p < numOfGames; p++) {
+                const matchX = getByName(matchups, 'MATCH ' + p);
+                if (!matchX) break;
+                await duplicate(matchX, 'MATCH ' + (p + 1), 0, step);
+              }
+
+              if (scale === 100) {
+                await translate(matchups, 0, Math.round((maxAreaHeight - totalHeight) / 3));
               }
 
               // Update each match
@@ -277,7 +324,6 @@ async function handleScheduleUpdate(baseFolder) {
                 const matchX = getByName(matchups, 'MATCH ' + j);
                 if (!matchX) continue;
 
-                const divisionText = getByName(matchX, 'DIVISION');
                 const roundText = getByName(matchX, 'ROUND');
 
                 // Team layers
@@ -285,28 +331,26 @@ async function handleScheduleUpdate(baseFolder) {
                 const color2 = getByName(matchX, 'TEAM 2 COLOR');
                 const logo1 = getByName(matchX, 'TEAM 1 LOGO');
                 const logo2 = getByName(matchX, 'TEAM 2 LOGO');
-                const team1nameText = getByName(matchX, 'TEAM 1 NAME');
-                const team2nameText = getByName(matchX, 'TEAM 2 NAME');
+                const team1RankFolder = getByName(matchX, 'TEAM 1 RANK');
+                const team2RankFolder = getByName(matchX, 'TEAM 2 RANK');
 
                 // Time/final groups
                 const timeFolder = getByName(matchX, 'TIME');
                 const finalFolder = getByName(matchX, 'FINAL SCORE');
                 const timeLayer = timeFolder ? getByName(timeFolder, 'TIME') : null;
+                const timeZoneLayer = timeFolder ? getByName(timeFolder, 'TIME ZONE') : null;
+                const team1nameText = getByName(timeFolder, 'TEAM 1 NAME');
+                const team2nameText = getByName(timeFolder, 'TEAM 2 NAME');
                 const score1 = finalFolder ? getByName(finalFolder, 'SCORE 1') : null;
                 const score2 = finalFolder ? getByName(finalFolder, 'SCORE 2') : null;
                 const finalText = finalFolder ? getByName(finalFolder, 'FINAL') : null;
+                const win1 = finalFolder ? getByName(finalFolder, 'WIN 1') : null;
+                const win2 = finalFolder ? getByName(finalFolder, 'WIN 2') : null;
+                const box1 = finalFolder ? getByName(finalFolder, 'BOX 1') : null;
+                const box2 = finalFolder ? getByName(finalFolder, 'BOX 2') : null;
 
-                // Determine division + abb for logos path
+                // Determine division abb for logos path
                 const divAbb = finalGames[i].div1;
-                const division = finalGames[i].division1;
-                // Find short division label if available
-                let divisionShort = null;
-                for (let k = 0; k < divs.length; k++) {
-                  if (divs[k].abb === divAbb && divs[k].conf === conf) {
-                    divisionShort = divs[k].divShort || null;
-                    break;
-                  }
-                }
                 // Toggle time/final based on docType
                 if (docType === 'Final Scores') {
                   if (timeFolder) timeFolder.visible = false;
@@ -320,11 +364,15 @@ async function handleScheduleUpdate(baseFolder) {
                 // Team 1
                 let t1Color = '4a4a4a';
                 let t1Name = finalGames[i].team1;
+                let t1Tier = conf;
+                let t1PowerRanking = '';
                 let t1Found = false;
                 for (let c = 0; c < teams.length; c++) {
                   if (teams[c].fullTeam === finalGames[i].team1) {
                     t1Color = teams[c].color1;
                     t1Name = teams[c].teamName;
+                    t1Tier = teams[c].conf || conf;
+                    t1PowerRanking = teams[c].powerRanking || '';
                     t1Full = teams[c].fullTeam;
                     t1Found = true;
                     break;
@@ -338,11 +386,15 @@ async function handleScheduleUpdate(baseFolder) {
                 // Team 2
                 let t2Color = '4a4a4a';
                 let t2Name = finalGames[i].team2;
+                let t2Tier = conf;
+                let t2PowerRanking = '';
                 let t2Found = false;
                 for (let c = 0; c < teams.length; c++) {
                   if (teams[c].fullTeam === finalGames[i].team2) {
                     t2Color = teams[c].color1;
                     t2Name = teams[c].teamName;
+                    t2Tier = teams[c].conf || conf;
+                    t2PowerRanking = teams[c].powerRanking || '';
                     t2Full = teams[c].fullTeam;
                     t2Found = true;
                     break;
@@ -375,6 +427,19 @@ async function handleScheduleUpdate(baseFolder) {
                 team1nameText.textItem.contents = team1DisplayName.length > 20 ? (team1DisplayName.slice(0, 20) + '...') : team1DisplayName;
                 team2nameText.textItem.contents = team2DisplayName.length > 20 ? (team2DisplayName.slice(0, 20) + '...') : team2DisplayName;
 
+                // Power rank badges (if PR exists): show folder, set rank text, and
+                // show only the tier layer matching the team tier.
+                applyTeamRankFolder(team1RankFolder, t1PowerRanking, t1Tier || conf);
+                applyTeamRankFolder(team2RankFolder, t2PowerRanking, t2Tier || conf);
+
+                // Text color: black on white team color, white otherwise
+                const textColor1 = new app.SolidColor();
+                textColor1.rgb.hexValue = t1Color.replace(/^#/, '').toLowerCase() === 'ffffff' ? '000000' : 'ffffff';
+                team1nameText.textItem.characterStyle.color = textColor1;
+                const textColor2 = new app.SolidColor();
+                textColor2.rgb.hexValue = t2Color.replace(/^#/, '').toLowerCase() === 'ffffff' ? '000000' : 'ffffff';
+                team2nameText.textItem.characterStyle.color = textColor2;
+
                 // Logos with fallback to LeagueLogo.png
                 if (t1Found) {
                   const logo1Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(t1Full)}.png`;
@@ -394,12 +459,6 @@ async function handleScheduleUpdate(baseFolder) {
                   await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
                 }
 
-                // Division label – always prefer short name if available
-                if (divisionText) {
-                  const displayDivision = divisionShort || division;
-                  divisionText.textItem.contents = String(displayDivision).toUpperCase();
-                }
-
                 // Round label – only for Playoffs
                 if (finalGames[i].gameType === 'Playoffs' && roundText) {
                   roundText.textItem.contents = String(finalGames[i].round || '').toUpperCase();
@@ -410,15 +469,19 @@ async function handleScheduleUpdate(baseFolder) {
                   if (score1) score1.textItem.contents = String(finalGames[i].score1 || '');
                   if (score2) score2.textItem.contents = String(finalGames[i].score2 || '');
 
-                  // Highlight winning score (gold)
                   const s1 = Number(finalGames[i].score1);
                   const s2 = Number(finalGames[i].score2);
-             //     if (!isNaN(s1) && !isNaN(s2)) {
-             //       if (s1 > s2 && score1) setTextHex(score1, 'ffd800');
-             //       else if (s2 > s1 && score2) setTextHex(score2, 'ffd800');
-             //     }
+                  const hasScores = !isNaN(s1) && !isNaN(s2);
+                  const team1Wins = hasScores && s1 > s2;
+                  const team2Wins = hasScores && s2 > s1;
+
+                  if (win1) win1.visible = team1Wins;
+                  if (win2) win2.visible = team2Wins;
+                  if (box1) await fillColor(box1, team1Wins ? 'ffffff' : '535353');
+                  if (box2) await fillColor(box2, team2Wins ? 'ffffff' : '535353');
                 } else {
                   if (timeLayer) timeLayer.textItem.contents = String(finalGames[i].time || '').toUpperCase();
+                  if (timeZoneLayer) timeZoneLayer.textItem.contents = String(divTimeZone || '').toUpperCase();
                 }
               }
 
@@ -429,6 +492,7 @@ async function handleScheduleUpdate(baseFolder) {
 
               previousDocId = doc._id;
               await doc.save();
+
             }, { commandName: `Update ${DOC_ID}` });
           }
         }
@@ -533,9 +597,15 @@ async function translate(layer, deltaX, deltaY) {
   ], { synchronousExecution: true });
 }
 
-async function scaleLayer(layer, percent) {
+async function scaleLayer(layer, percent, anchor = 'center') {
   const value = Number(percent);
   if (!isFinite(value) || value <= 0) return;
+  const anchorMap = {
+    top: 'QCSTop', center: 'QCSAverage', bottom: 'QCSBottom',
+    topLeft: 'QCSTopLeft', topRight: 'QCSTopRight',
+    bottomLeft: 'QCSBottomLeft', bottomRight: 'QCSBottomRight'
+  };
+  const centerState = anchorMap[anchor] || 'QCSAverage';
   await app.batchPlay([
     {
       _obj: "select",
@@ -545,11 +615,35 @@ async function scaleLayer(layer, percent) {
     {
       _obj: "transform",
       _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }],
-      freeTransformCenterState: { _enum: "quadCenterState", _value: "QCSAverage" },
+      freeTransformCenterState: { _enum: "quadCenterState", _value: centerState },
       width: { _unit: "percentUnit", _value: value },
       height: { _unit: "percentUnit", _value: value }
     }
   ], { synchronousExecution: true });
+}
+
+function applyTeamRankFolder(rankFolder, powerRanking, tierName) {
+  if (!rankFolder) return;
+
+  const hasRanking = String(powerRanking ?? '').trim() !== '';
+  rankFolder.visible = hasRanking;
+  if (!hasRanking) return;
+
+  const rankTextLayer = getByName(rankFolder, 'RANK');
+  if (rankTextLayer && rankTextLayer.textItem) {
+    rankTextLayer.textItem.contents = String(powerRanking).trim();
+    rankTextLayer.visible = true;
+  }
+
+  const targetTier = String(tierName || '').trim().toUpperCase();
+  if (!Array.isArray(rankFolder.layers)) return;
+
+  for (let i = 0; i < rankFolder.layers.length; i++) {
+    const layer = rankFolder.layers[i];
+    if (!layer) continue;
+    if (String(layer.name).toUpperCase() === 'RANK') continue;
+    layer.visible = targetTier !== '' && String(layer.name || '').trim().toUpperCase() === targetTier;
+  }
 }
 
 // Ensure folder path under a root FolderEntry; returns the deepest folder
