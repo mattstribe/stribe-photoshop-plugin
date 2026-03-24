@@ -91,11 +91,13 @@ function updateActionButtons() {
   const statsBtn = document.getElementById("btnStats");
   const divPreviewsBtn = document.getElementById("btnDivPreviews");
   const activeDivisionsBtn = document.getElementById("btnActiveDivisions");
+  const teamsUpdateBtn = document.getElementById("btnTeamsUpdate");
 
   if (!hasFolderSelected) {
     scheduleBtn.disabled = standingsBtn.disabled = statsBtn.disabled = true;
     if (divPreviewsBtn) divPreviewsBtn.disabled = true;
     if (activeDivisionsBtn) activeDivisionsBtn.disabled = true;
+    if (teamsUpdateBtn) teamsUpdateBtn.disabled = true;
     return;
   }
   if (divPreviewsBtn) divPreviewsBtn.disabled = false;
@@ -115,6 +117,7 @@ function updateActionButtons() {
     scheduleBtn.disabled = !(isAll || isValidDiv || isValidConf);
   }
   standingsBtn.disabled = statsBtn.disabled = !(isAll || isValidDiv);
+  if (teamsUpdateBtn) teamsUpdateBtn.disabled = !(isAll || isValidDiv || isValidConf);
 }
 
 async function initializeUI() {

@@ -1,9 +1,9 @@
 const photoshop = require("photoshop");
 const app = photoshop.app;
 const core = photoshop.core;
-const leagueConfig = require("./leagueConfig_200.js");
-const imageHandler = require("./imageHandler.js");
-const exportHandler = require("./exportHandler.js");
+const leagueConfig = require("../leagueConfig_200.js");
+const imageHandler = require("../utils/imageHandler.js");
+const exportHandler = require("../utils/exportHandler.js");
 
 // Helper
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -289,10 +289,11 @@ async function handleScheduleUpdate(baseFolder) {
               const maxAreaHeight = Math.abs(areaBounds.bottom - areaBounds.top);
 
               const match1 = getByName(matchups, 'MATCH 1');
-              const match1Bounds = match1.boundsNoEffects;
+              const match1Rectangle = getByName(match1, 'RECTANGLE');
+              const match1Bounds = match1Rectangle.boundsNoEffects;
               const boxHeight = Math.abs(match1Bounds.bottom - match1Bounds.top);
 
-              const defaultSpacing = boxHeight * 0.05;
+              const defaultSpacing = boxHeight * 0.25;
               const totalHeight = (boxHeight * numOfGames) + (defaultSpacing * (numOfGames - 1));
 
               let scale = 100;
@@ -432,13 +433,9 @@ async function handleScheduleUpdate(baseFolder) {
                 applyTeamRankFolder(team1RankFolder, t1PowerRanking, t1Tier || conf);
                 applyTeamRankFolder(team2RankFolder, t2PowerRanking, t2Tier || conf);
 
-                // Text color: black on white team color, white otherwise
-                const textColor1 = new app.SolidColor();
-                textColor1.rgb.hexValue = t1Color.replace(/^#/, '').toLowerCase() === 'ffffff' ? '000000' : 'ffffff';
-                team1nameText.textItem.characterStyle.color = textColor1;
-                const textColor2 = new app.SolidColor();
-                textColor2.rgb.hexValue = t2Color.replace(/^#/, '').toLowerCase() === 'ffffff' ? '000000' : 'ffffff';
-                team2nameText.textItem.characterStyle.color = textColor2;
+                // Text color from background luminance
+                setTextColor(team1nameText, t1Color);
+                setTextColor(team2nameText, t2Color);
 
                 // Logos with fallback to LeagueLogo.png
                 if (t1Found) {
@@ -644,6 +641,26 @@ function applyTeamRankFolder(rankFolder, powerRanking, tierName) {
     if (String(layer.name).toUpperCase() === 'RANK') continue;
     layer.visible = targetTier !== '' && String(layer.name || '').trim().toUpperCase() === targetTier;
   }
+}
+
+function setTextColor(layer, backgroundColor) {
+  if (!layer || !layer.textItem) return;
+  const color = new app.SolidColor();
+  const luminance = relativeLuminance(backgroundColor);
+  color.rgb.hexValue = luminance >= 0.7 ? '252525' : 'ffffff';
+  layer.textItem.characterStyle.color = color;
+}
+
+function relativeLuminance(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const rs = r / 255;
+  const gs = g / 255;
+  const bs = b / 255;
+  const toLinear = c => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const rl = toLinear(rs);
+  const gl = toLinear(gs);
+  const bl = toLinear(bs);
+  return (0.2126 * rl) + (0.7152 * gl) + (0.0722 * bl);
 }
 
 // Ensure folder path under a root FolderEntry; returns the deepest folder

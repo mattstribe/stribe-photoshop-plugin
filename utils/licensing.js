@@ -1,5 +1,5 @@
 // licensing.js
-const ui = require("./ui.js");
+const ui = require("../ui.js");
 
 const LICENSE_API_URL = "https://license-server-five-red.vercel.app/api/verify-license";
 const LICENSE_RECHECK_INTERVAL_DAYS = 7;

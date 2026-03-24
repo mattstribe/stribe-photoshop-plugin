@@ -1,8 +1,8 @@
 const photoshop = require("photoshop");
 const app = photoshop.app;
 const core = photoshop.core;
-const leagueConfig = require("./leagueConfig_200.js");
-const exportHandler = require("./exportHandler.js");
+const leagueConfig = require("../leagueConfig_200.js");
+const exportHandler = require("../utils/exportHandler.js");
 
 // Document identifiers for this script
 const DOC_ID = 'ACTIVE-DIVS';

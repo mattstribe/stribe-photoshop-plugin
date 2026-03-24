@@ -1,6 +1,6 @@
 // ========== EXPORT HANDLER ==========
 // Handles exporting graphics to local filesystem and optionally uploading to CDN (Cloudflare R2)
-// Used by schedule.js, standings.js, and stats.js
+// Used by features (schedule, standings, stats, etc.) via utils/
 
 const photoshop = require("photoshop");
 const app = photoshop.app;

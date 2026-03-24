@@ -2,9 +2,9 @@
 const photoshop = require("photoshop");
 const app = photoshop.app;
 const core = photoshop.core;
-const leagueConfig = require("./leagueConfig_200.js");
-const imageHandler = require("./imageHandler.js");
-const exportHandler = require("./exportHandler.js");
+const leagueConfig = require("../leagueConfig_200.js");
+const imageHandler = require("../utils/imageHandler.js");
+const exportHandler = require("../utils/exportHandler.js");
 const fs = require("uxp").storage.localFileSystem;
 
 // Small delay helper (used when closing previous doc)
@@ -479,11 +479,22 @@ const getByName = (parent, name) => {
 
 const setTextColor = (layer, backgroundColor) => {
   const color = new app.SolidColor();
-  const { r, g, b } = hexToRgb(backgroundColor);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  color.rgb.hexValue = luminance > 0.90 ? '252525' : 'ffffff';
+  const luminance = relativeLuminance(backgroundColor);
+  color.rgb.hexValue = luminance >= 0.7 ? '252525' : 'ffffff';
   layer.textItem.characterStyle.color = color;
 };
+
+function relativeLuminance(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const rs = r / 255;
+  const gs = g / 255;
+  const bs = b / 255;
+  const toLinear = c => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const rl = toLinear(rs);
+  const gl = toLinear(gs);
+  const bl = toLinear(bs);
+  return (0.2126 * rl) + (0.7152 * gl) + (0.0722 * bl);
+}
 async function duplicate(group, newName, deltaX = 0, deltaY = 0) {
       // 1) Select source group
     await app.batchPlay(

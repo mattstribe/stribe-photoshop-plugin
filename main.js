@@ -1,4 +1,4 @@
-const licensing = require("./licensing.js");
+const licensing = require("./utils/licensing.js");
 const storage = require("./storage.js");
 const ui = require("./ui.js");
 
@@ -20,36 +20,43 @@ document.getElementById("btnRefreshWeek").addEventListener("click", async () => 
 document.getElementById("btnSchedule").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();
-  const scheduleModule = require("./schedule.js");
+  const scheduleModule = require("./features/schedule.js");
   await scheduleModule.handleScheduleUpdate(baseFolder);
 });
 
 document.getElementById("btnStandings").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();
-  const standingsModule = require("./standings.js");
+  const standingsModule = require("./features/standings.js");
   await standingsModule.handleStandingsUpdate(baseFolder);
 });
 
 document.getElementById("btnStats").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();
-  const statsModule = require("./stats.js");
+  const statsModule = require("./features/stats.js");
   await statsModule.handleStatsUpdate(baseFolder);
 });
 
 document.getElementById("btnDivPreviews").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();
-  const divPreviewsModule = require("./divPreviews.js");
+  const divPreviewsModule = require("./features/divPreviews.js");
   await divPreviewsModule.handleDivPreviewsUpdate(baseFolder);
 });
 
 document.getElementById("btnActiveDivisions").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();
-  const activeDivisionsModule = require("./activeDivisions.js");
+  const activeDivisionsModule = require("./features/activeDivisions.js");
   await activeDivisionsModule.handleActiveDivisionsUpdate(baseFolder);
+});
+
+document.getElementById("btnTeamsUpdate").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const teamsUpdateModule = require("./features/teamsUpdate.js");
+  await teamsUpdateModule.handleTeamsUpdate(baseFolder);
 });
 
 // Division
@@ -84,7 +91,7 @@ if (settingsMenuButton && settingsMenu) {
   // Clear cache button
   if (btnClearCache) {
     btnClearCache.addEventListener("click", async () => {
-      const imageHandler = require("./imageHandler.js");
+      const imageHandler = require("./utils/imageHandler.js");
       await imageHandler.clearCache();
       settingsMenu.style.display = "none";
       

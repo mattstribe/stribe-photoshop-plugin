@@ -1,8 +1,8 @@
 const photoshop = require("photoshop");
 const app = photoshop.app;
 const core = photoshop.core;
-const leagueConfig = require("./leagueConfig_200.js");
-const exportHandler = require("./exportHandler.js");
+const leagueConfig = require("../leagueConfig_200.js");
+const exportHandler = require("../utils/exportHandler.js");
 const fs = require("uxp").storage.localFileSystem;
 
 // Small delay helper (used when closing previous doc)
