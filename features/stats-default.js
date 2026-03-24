@@ -637,7 +637,7 @@ const getByName = (parent, name) => {
 const setTextColor = (layer, backgroundColor) => {
     const color = new app.SolidColor();
     const luminance = relativeLuminance(backgroundColor);
-    color.rgb.hexValue = luminance >= 0.7 ? '252525' : 'ffffff';
+    color.rgb.hexValue = luminance >= 0.75 ? '252525' : 'ffffff';
     layer.textItem.characterStyle.color = color;
 };
 

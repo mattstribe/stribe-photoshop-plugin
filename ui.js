@@ -89,12 +89,14 @@ function updateActionButtons() {
   const scheduleBtn = document.getElementById("btnSchedule");
   const standingsBtn = document.getElementById("btnStandings");
   const statsBtn = document.getElementById("btnStats");
+  const thumbnailBtn = document.getElementById("btnThumbnail");
   const divPreviewsBtn = document.getElementById("btnDivPreviews");
   const activeDivisionsBtn = document.getElementById("btnActiveDivisions");
   const teamsUpdateBtn = document.getElementById("btnTeamsUpdate");
 
   if (!hasFolderSelected) {
     scheduleBtn.disabled = standingsBtn.disabled = statsBtn.disabled = true;
+    if (thumbnailBtn) thumbnailBtn.disabled = true;
     if (divPreviewsBtn) divPreviewsBtn.disabled = true;
     if (activeDivisionsBtn) activeDivisionsBtn.disabled = true;
     if (teamsUpdateBtn) teamsUpdateBtn.disabled = true;
@@ -117,6 +119,7 @@ function updateActionButtons() {
     scheduleBtn.disabled = !(isAll || isValidDiv || isValidConf);
   }
   standingsBtn.disabled = statsBtn.disabled = !(isAll || isValidDiv);
+  if (thumbnailBtn) thumbnailBtn.disabled = !(isAll || isValidDiv);
   if (teamsUpdateBtn) teamsUpdateBtn.disabled = !(isAll || isValidDiv || isValidConf);
 }
 

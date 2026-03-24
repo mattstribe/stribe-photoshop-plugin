@@ -53,16 +53,20 @@
       <span id="btnRefreshWeek" class="button-link">(Refresh)</span>
     </sp-body>
 
-    <sp-button id="btnSchedule">SCHEDULE</sp-button>
-    <sp-button id="btnStandings">STANDINGS</sp-button>
-    <sp-button id="btnStats">STATS</sp-button>
-    <sp-button id="btnDivPreviews">DIV PREVIEWS</sp-button>
-    <sp-button id="btnActiveDivisions">ACTIVE DIVS</sp-button>
-    <sp-button id="btnTeamsUpdate">TEAMS UPDATE</sp-button>
-    <br>
-    <sp-checkbox id="exportToCloudCheckbox">
-      Export to Cloud
-    </sp-checkbox>
+    <div class="action-buttons">
+      <button type="button" class="panel-action-btn" id="btnSchedule">SCHEDULE</button>
+      <button type="button" class="panel-action-btn" id="btnStandings">STANDINGS</button>
+      <button type="button" class="panel-action-btn" id="btnStats">STATS</button>
+      <button type="button" class="panel-action-btn" id="btnThumbnail">THUMBNAIL</button>
+      <button type="button" class="panel-action-btn" id="btnActiveDivisions">ACTIVE DIVS</button>
+      <button type="button" class="panel-action-btn" id="btnDivPreviews">DIV PREVIEWS</button>
+      <button type="button" class="panel-action-btn" id="btnTeamsUpdate">TEAMS UPDATE</button>
+    </div>
+    <div class="export-cloud-row">
+      <sp-checkbox id="exportToCloudCheckbox">
+        Export to Cloud
+      </sp-checkbox>
+    </div>
 
     <sp-body class="info-display">v2.5.2</sp-body>
     <sp-body style="font-size:11px;opacity:0.6;margin-top:20px;">

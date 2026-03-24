@@ -38,6 +38,13 @@ document.getElementById("btnStats").addEventListener("click", async () => {
   await statsModule.handleStatsUpdate(baseFolder);
 });
 
+document.getElementById("btnThumbnail").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const thumbnailModule = require("./features/thumbnail.js");
+  await thumbnailModule.handleThumbnailUpdate(baseFolder);
+});
+
 document.getElementById("btnDivPreviews").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();

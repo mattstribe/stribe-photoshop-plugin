@@ -136,6 +136,76 @@ sp-button {
   min-width: 110px;
 }
 
+/* Main panel: all action buttons full width (match .info-display / week row) */
+#main-ui .action-buttons {
+  display: flex;
+  flex-direction: column;
+  /* UXP: prefer margin on buttons; gap can be ignored in some hosts */
+  gap: 0;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0 0;
+}
+
+/* Native buttons: reliable vertical centering (UXP sp-button shadow often ignores label alignment) */
+.panel-action-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+  padding: 0 12px;
+  min-height: 32px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #f9fafb;
+  background-color: #1e3a8a;
+  border: 2px solid #3d5cad;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#main-ui .action-buttons .panel-action-btn:not(:last-child) {
+  margin-bottom: 5px;
+}
+
+.panel-action-btn:hover:not(:disabled) {
+  background-color: #2742a3;
+  border-color: #5b7ec9;
+}
+
+.panel-action-btn:disabled {
+  background-color: #4b5563;
+  border-color: #6b7280;
+  color: #d1d5db;
+  cursor: default;
+  opacity: 0.85;
+}
+
+.panel-action-btn:disabled:hover {
+  background-color: #4b5563;
+  border-color: #6b7280;
+}
+
+/* License + other Spectrum buttons */
+sp-button::part(button) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+  padding-block: 0;
+  padding-inline: 14px;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
 /* Dark blue rounded-rectangle buttons with light text */
 sp-button,
 sp-button::part(button) {
@@ -162,6 +232,21 @@ sp-button[disabled]::part(button) {
 
 sp-button[disabled]::part(button):hover {
   background-color: #4b5563;
+}
+
+/* Export to Cloud: center checkbox + label in the panel */
+.export-cloud-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 4px 0 2px;
+  box-sizing: border-box;
+}
+
+.export-cloud-row sp-checkbox {
+  width: auto;
+  max-width: 100%;
 }
 
 /* Checkbox: show pointer hand on hover */
