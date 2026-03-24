@@ -271,22 +271,57 @@ async function handleStandingsUpdate(baseFolder) {
           previousDocId = null;
         }
 
-        //Define document and header
+        // Define document — header: DIVISION, TIER, EMBLEM, HEADER COLOR + sponsors (no HEADING/DATE in this template)
         const doc = app.activeDocument;
         // Save As immediately to avoid editing/saving the template
         if (doc.saveAs && doc.saveAs.psd) await doc.saveAs.psd(saveFile);
         const header = getByName(doc, 'HEADER');
         const table = getByName(doc, 'TABLE');
+        const background = getByName(doc, 'BACKGROUND');
+        const sponsorsFolder = getByName(doc, 'Sponsors');
+        const sponsorBar = sponsorsFolder ? getByName(sponsorsFolder, 'SPONSOR BAR') : null;
+        const backgroundBlack = background ? getByName(background, 'BLACK') : null;
+        const backgroundWhite = background ? getByName(background, 'WHITE') : null;
 
-        // Header updates
-        const divisionText = getByName(header, 'DIVISION');
-        const locationText = getByName(header, 'LOCATION');
-        const divisionColorLayer = getByName(header, 'HEADER COLOR');
+        // Header layers (NBHL standings template has no HEADING / DATE)
+        const divisionText = header ? getByName(header, 'DIVISION') : null;
+        const emblemLayer = header ? getByName(header, 'EMBLEM') : null;
+        const divisionColorLayer = header ? getByName(header, 'HEADER COLOR') : null;
 
-        divisionText.textItem.contents = division.toUpperCase();
-        locationText.textItem.contents = confLocation.toUpperCase();
-        // division fill color
-        await fillColor(divisionColorLayer, divColorHex);
+        if (divisionText) {
+          divisionText.textItem.contents = (division + ' ' + conf).toUpperCase();
+        }
+        const tierFolder = header ? getByName(header, 'TIER') : null;
+        if (tierFolder) {
+          for (let i = 0; i < tierFolder.layers.length; i++) {
+            tierFolder.layers[i].visible = (tierFolder.layers[i].name === conf);
+          }
+        }
+        if (emblemLayer) {
+          await imageHandler.replaceLayerWithImage(emblemLayer, `LOGOS/Division Emblems/PNG/${divAbb}_emblem.png`, baseFolder);
+        }
+
+        const sponsorDir = 'LOGOS/Sponsor/Division Sponsors/Sponsor Bars/';
+        let sponsorSuffix = '';
+        if (backgroundBlack) sponsorSuffix = 'BLACK';
+        else if (backgroundWhite) sponsorSuffix = 'WHITE';
+        const sponsorBaseFile = divAbb + '_Sponsors.psd';
+        const sponsorBasePath = sponsorDir + sponsorBaseFile;
+        if (sponsorBar) {
+          let ok = false;
+          if (sponsorSuffix) {
+            const sponsorVariantFile = divAbb + '_Sponsors_' + sponsorSuffix + '.psd';
+            const variantPath = sponsorDir + sponsorVariantFile;
+            ok = await imageHandler.replaceLayerWithImage(sponsorBar, variantPath, baseFolder);
+          }
+          if (!ok) {
+            await imageHandler.replaceLayerWithImage(sponsorBar, sponsorBasePath, baseFolder);
+          }
+        }
+
+        if (divisionColorLayer) {
+          await fillColor(divisionColorLayer, divColorHex);
+        }
 
         // Sort teams by rank property from spreadsheet
         let standings = divTeams.slice().sort((a, b) => {
@@ -331,53 +366,51 @@ async function handleStandingsUpdate(baseFolder) {
           else
             finalStandings = chunks[h]
  
+          const chunkTeams = finalStandings.length;
+
+          // TABLE UPDATE (AREA-driven spacing/scaling, same pattern as schedule-nbhl.js)
+          if (table.layers.length === 2) {
+            const areaLayer = background ? getByName(background, 'AREA') : null;
+            if (!areaLayer) throw new Error("AREA layer not found in BACKGROUND group");
+
+            const areaBounds = areaLayer.boundsNoEffects;
+            const maxAreaHeight = Math.abs(areaBounds.bottom - areaBounds.top);
+
+            const team1 = getByName(table, 'TEAM 1');
+            if (!team1) throw new Error("TEAM 1 layer not found in TABLE group");
+            const team1Box = getByName(team1, 'RECTANGLE') || team1;
+            const team1Bounds = team1Box.boundsNoEffects;
+            const boxHeight = Math.abs(team1Bounds.bottom - team1Bounds.top);
+
+            const defaultSpacing = boxHeight * 0.15;
+            const totalHeight = (boxHeight * chunkTeams) + (defaultSpacing * (chunkTeams - 1));
+
+            let scale = 100;
+            let spacing = defaultSpacing;
+            if (totalHeight > maxAreaHeight) {
+              scale = (maxAreaHeight / totalHeight) * 100;
+              spacing = defaultSpacing * (scale / 100);
+            }
+
+            // Scale full TABLE so headers and rows shrink together.
+            await scaleLayer(table, scale);
+
+            // Round to whole pixels to avoid cumulative sub-pixel drift.
+            const step = Math.round((scale / 100) * (spacing + boxHeight));
+
+            for (let p = 1; p < chunkTeams; p++) {
+              const teamX = getByName(table, `TEAM ${p}`);
+              if (!teamX) break;
+              await duplicate(teamX, `TEAM ${p + 1}`, 0, step);
+            }
+
+            if (scale === 100) {
+              await translate(table, 0, Math.round((maxAreaHeight - totalHeight) / 3));
+            }
+          }
+
           //STANDINGS UPDATE
           for (let i = 0; i < finalStandings.length; i++) {
-            //TABLE UPDATE
-            //Create boxes for number of teams if not existing
-            const chunkTeams = finalStandings.length
-            
-            if (table.layers.length === 2) {
-              const baseStep = 140; // original vertical spacing between rows
-
-              if (chunkTeams <= 6) {
-                await translate(table, 0, 200 - (30 * (chunkTeams)));
-                for (let p = 2; p < chunkTeams + 1; p++) {
-                  const teamX = getByName(table, `TEAM ${p-1}`);
-                  if (!teamX) break;
-                  await duplicate(teamX, `TEAM ${p}`, 0, baseStep);
-                }
-              } 
-              else if (chunkTeams ==  7) {
-                for (let p = 2; p < chunkTeams + 1; p++) {
-                  const teamX = getByName(table, `TEAM ${p-1}`);
-                  if (!teamX) break;
-                  await duplicate(teamX, `TEAM ${p}`, 0, baseStep - 15);
-                }
-              }
-              else if (chunkTeams ==  8) {
-                await translate(table, 0, -10);
-                let scale = 90
-                scaleLayer(table, scale)
-                const step = Math.round((baseStep - 15) * (scale/100))
-                for (let p = 2; p < chunkTeams + 1; p++) {
-                  const teamX = getByName(table, `TEAM ${p-1}`);
-                  if (!teamX) break;
-                  await duplicate(teamX, `TEAM ${p}`, 0, step);
-                }
-              }
-              else if (chunkTeams ==  9) {
-                await translate(table, 0, -10);
-                let scale = 80
-                scaleLayer(table, scale)
-                const step = Math.round((baseStep - 15) * (scale/100))
-                for (let p = 2; p < chunkTeams + 1; p++) {
-                  const teamX = getByName(table, `TEAM ${p-1}`);
-                  if (!teamX) break;
-                  await duplicate(teamX, `TEAM ${p}`, 0, step);
-                }
-              }
-            }
 
             // Hide any extra TEAM slots above chunkTeams so that, for example,
             // a 15-team division split into 9 + 6 only shows 6 rows on the
@@ -387,6 +420,11 @@ async function handleStandingsUpdate(baseFolder) {
               if (!extraTeam) break;
               extraTeam.visible = false;
             }
+            for (let visibleIndex = 1; visibleIndex <= chunkTeams; visibleIndex++) {
+              const visibleTeam = getByName(table, `TEAM ${visibleIndex}`);
+              if (!visibleTeam) break;
+              visibleTeam.visible = true;
+            }
 
             //define current standings folder
             const j = i + 1;
@@ -394,24 +432,23 @@ async function handleStandingsUpdate(baseFolder) {
             // Get team info layers
             const rankText = getByName(teamX, 'RANK');
             const teamColorLayer = getByName(teamX, 'TEAM COLOR');
+            const teamCityLayer = getByName(teamX, 'TEAM CITY');
             const teamNameLayer = getByName(teamX, 'TEAM NAME');
             const teamLogoLayer = getByName(teamX, 'LOGO');
-            // Get stat info layers
-            const gpText = getByName(teamX, 'GP');
-            const winText = getByName(teamX, 'W');
-            const lossText = getByName(teamX, 'L');
-            const otlText = getByName(teamX, 'OTL') || getByName(teamX, 'T');
-            const otwText = getByName(teamX, 'OTW');
+            // Get stat info layers (NBHL: single RECORD instead of GP / W / OTW / OTL / L)
+            const recordText = getByName(teamX, 'RECORD');
             const ptsText = getByName(teamX, 'PTS');
             const pctText = getByName(teamX, 'PT%');
 
             // Team color and logo lookup
             let tColor = '000000';
             let tName = '';
+            let tCity = '';
             for (let c = 0; c < teams.length; c++) {
               if (teams[c].fullTeam === finalStandings[i].fullTeam) {
                 tColor = teams[c].color1;
                 tName = teams[c].teamName;
+                tCity = teams[c].teamCity || '';
                 tFull = teams[c].fullTeam;
                 break;
               }
@@ -425,29 +462,34 @@ async function handleStandingsUpdate(baseFolder) {
             if (!ok) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
             // Text updates
-            teamNameLayer.textItem.contents = (() => { const u = String(tName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
+            if (teamCityLayer) {
+              teamCityLayer.textItem.contents = (() => {
+                const u = String(tCity).toUpperCase();
+                return u.length > 20 ? (u.slice(0, 20) + '...') : u;
+              })();
+            }
+            if (teamNameLayer) {
+              teamNameLayer.textItem.contents = (() => {
+                const u = String(tName).toUpperCase();
+                return u.length > 20 ? (u.slice(0, 20) + '...') : u;
+              })();
+            }
             // Global rank across all chunks: offset by how many teams we've
             // already placed in prior chunks.
-            rankText.textItem.contents = String(processedBefore + j);
-            gpText.textItem.contents = finalStandings[i].gp;
-            winText.textItem.contents = finalStandings[i].w;
-            lossText.textItem.contents = finalStandings[i].l;
-            otlText.textItem.contents = finalStandings[i].otl;
-            if (otwText) otwText.textItem.contents = finalStandings[i].otw;
-            ptsText.textItem.contents = finalStandings[i].pts;
-            pctText.textItem.contents = finalStandings[i].pct;
+            if (rankText) rankText.textItem.contents = String(processedBefore + j);
+            const row = finalStandings[i];
+            if (recordText) {
+              recordText.textItem.contents = `${row.w}-${row.otw}-${row.otl}-${row.l}`;
+            }
+            if (ptsText) ptsText.textItem.contents = row.pts;
+            if (pctText) pctText.textItem.contents = `PT% ${row.pct}`;
 
-            /* WILL NEED TO FIX FOR CUSTOM TEMPLATES
-            // Text color based on background
-            setTextColor(teamNameLayer, tColor);
-            setTextColor(gpText, tColor);
-            setTextColor(winText, tColor);
-            setTextColor(lossText, tColor);
-            setTextColor(otlText, tColor);
-            if (otwText) setTextColor(otwText, tColor);
-            setTextColor(ptsText, tColor);
-            setTextColor(pctText, tColor);
-            */
+            // Text on team color bar: bright colors (luminance > 0.70) → black text; else white
+            if (teamCityLayer) setTextColor(teamCityLayer, tColor);
+            if (teamNameLayer) setTextColor(teamNameLayer, tColor);
+            if (recordText) setTextColor(recordText, tColor);
+            if (pctText) setTextColor(pctText, tColor);
+            if (ptsText) setTextColor(ptsText, tColor);
           }
 
           // After finishing this chunk, record how many teams we've output so far
