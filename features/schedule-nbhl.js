@@ -482,7 +482,15 @@ async function handleScheduleUpdate(baseFolder) {
                   if (box2) await fillColor(box2, team2Wins ? 'ffffff' : '535353');
                 } else {
                   if (timeLayer) timeLayer.textItem.contents = String(finalGames[i].time || '').toUpperCase();
-                  if (timeZoneLayer) timeZoneLayer.textItem.contents = String(divTimeZone || '').toUpperCase();
+                  if (timeZoneLayer) {
+                    // Keep original division timezone first
+                    timeZoneLayer.textItem.contents = String(divTimeZone || '').toUpperCase();
+                    // Override based only on location value
+                    const gameLocation = String(finalGames[i].location || '').trim().toUpperCase();
+                    if (gameLocation === 'JC SNOW PARK') {
+                      timeZoneLayer.textItem.contents = 'MOUNTAIN';
+                    }
+                  }
                 }
               }
 
