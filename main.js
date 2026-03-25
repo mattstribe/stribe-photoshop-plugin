@@ -38,6 +38,13 @@ document.getElementById("btnStats").addEventListener("click", async () => {
   await statsModule.handleStatsUpdate(baseFolder);
 });
 
+document.getElementById("btnHaveADay").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const haveADayModule = require("./features/have-a-day.js");
+  await haveADayModule.handleHaveADayUpdate(baseFolder);
+});
+
 document.getElementById("btnThumbnail").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();

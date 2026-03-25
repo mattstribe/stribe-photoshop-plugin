@@ -112,6 +112,8 @@ async function handleScheduleUpdate(baseFolder) {
 
     // Track previously opened doc id (for ALL mode)
     let previousDocId = null;
+    // Per-group export counters for this run/week
+    const exportCounts = {};
 
     // Iterate conferences
     for (let d = 0; d < activeConfs.length; d++) {
@@ -440,7 +442,9 @@ async function handleScheduleUpdate(baseFolder) {
               }
 
               // Export per chunk
-              const exportFile = await prepareScheduleExport(gamedayFolder, week, docType, conf, dateShort, gameType, a);
+              const exportKey = String(confGames[0].div1 || conf || 'SCHEDULE');
+              exportCounts[exportKey] = (exportCounts[exportKey] || 0) + 1;
+              const exportFile = await prepareScheduleExport(gamedayFolder, week, docType, exportKey, exportCounts[exportKey]);
               const cdnPath = exportHandler.buildCdnPath(baseFolder.name, week, docType, exportFile.name);
               await exportHandler.exportPng(doc, exportFile, cdnPath, cloudExportEnabled);
 
@@ -580,13 +584,12 @@ async function ensureFolderPath(rootFolder, segments) {
 }
 
 // Prepare and return a FileEntry for Schedule PNG export
-async function prepareScheduleExport(gamedayFolder, week, docType, conf, dateShort, type, chunkIndex) {
+async function prepareScheduleExport(gamedayFolder, week, docType, exportKey, sequenceNumber) {
   const weekFolderName = `Week ${week}`;
   const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', weekFolderName, docType]);
-  const safeConf = sanitizeFilename(conf);
-  const safeDate = sanitizeFilename(dateShort);
-  const safeType = sanitizeFilename(type);
-  const fileName = `${safeConf}_${safeDate}_${safeType}_${chunkIndex}.png`;
+  const safeKey = sanitizeFilename(exportKey);
+  const n = Number(sequenceNumber) || 1;
+  const fileName = `${safeKey}_Schedule_${n}.png`;
   return await exportFolder.createFile(fileName, { overwrite: true });
 }
 

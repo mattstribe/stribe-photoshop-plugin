@@ -59,6 +59,7 @@ async function handleThumbnailUpdate(baseFolder) {
       const conf = String(game.conf || "").trim();
       const isPlayoff = String(game.gameType || "").toUpperCase() === "PLAYOFFS";
       const dateTextValue = formatDateForThumbnail(game.date, year);
+      const dateFileValue = formatDateForThumbnailFilename(game.date);
 
       const templateInfo = await resolveThumbnailTemplate(gamedayFolder, divAbb, conf, isPlayoff);
       if (!templateInfo || !templateInfo.file) {
@@ -76,11 +77,11 @@ async function handleThumbnailUpdate(baseFolder) {
 
       const exportFolder = await ensureFolderPath(gamedayFolder, ["Exports", `Week ${week}`, DOC_EXPORT, divAbb || "UNKNOWN"]);
       const fullGameExport = await exportFolder.createFile(
-        sanitizeFilename(`${dateTextValue}_${game.team1}_${game.team2}_FullGame.png`),
+        sanitizeFilename(`${dateFileValue}_${game.team1}_${game.team2}_FullGame.png`),
         { overwrite: true }
       );
       const highlightsExport = await exportFolder.createFile(
-        sanitizeFilename(`${dateTextValue}_${game.team1}_${game.team2}_Highlights.png`),
+        sanitizeFilename(`${dateFileValue}_${game.team1}_${game.team2}_Highlights.png`),
         { overwrite: true }
       );
 
@@ -297,6 +298,30 @@ function formatDateForThumbnail(dateValue, year) {
   if (/\b\d{4}\b/.test(raw)) return raw.toUpperCase();
   const suffix = String(year || "").trim();
   return suffix ? `${raw}, ${suffix}`.toUpperCase() : raw.toUpperCase();
+}
+
+function formatDateForThumbnailFilename(dateValue) {
+  // Example target: "Monday-June-16"
+  // - Proper case for day/month words
+  // - No year
+  const raw = String(dateValue || "").trim();
+  if (!raw) return "";
+
+  // Remove a trailing/comma year like ", 2026" or " 2026".
+  const withoutYear = raw.replace(/[\s,]*\b\d{4}\b/g, " ").replace(/\s+/g, " ").trim();
+
+  const parts = withoutYear
+    .split(/[\s,/-]+/g)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => {
+      // Keep numbers as-is.
+      if (/^\d+$/.test(p)) return p;
+      const lower = p.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    });
+
+  return parts.join("-");
 }
 
 function normalizeLabel(value) {

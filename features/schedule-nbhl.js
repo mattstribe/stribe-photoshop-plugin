@@ -108,6 +108,8 @@ async function handleScheduleUpdate(baseFolder) {
 
     // Track previously opened doc id (for ALL mode)
     let previousDocId = null;
+    // Per-division export counters for this run/week
+    const divisionExportCounts = {};
 
     // Iterate divisions
     for (let d = 0; d < activeDivs.length; d++) {
@@ -233,7 +235,7 @@ async function handleScheduleUpdate(baseFolder) {
               const dateText = getByName(header, 'DATE');
               const divisionText = getByName(header, 'DIVISION');
               const emblemLayer = getByName(header, 'EMBLEM');
-              //const locationText = getByName(header, 'LOCATION');
+              const locationText = getByName(header, 'LOCATION');
               const divisionColorLayer = getByName(header, 'HEADER COLOR');
 
               // Set header
@@ -249,6 +251,9 @@ async function handleScheduleUpdate(baseFolder) {
               dateText.textItem.contents = String(dateValue).toUpperCase();
               if (divisionText) {
                 divisionText.textItem.contents = (division + ' ' + conf).toUpperCase();
+              }
+              if (locationText && locationText.textItem) {
+                locationText.textItem.contents = `@ ${String(finalGames?.[0]?.location || '').toUpperCase()}`;
               }
               const tierFolder = getByName(header, 'TIER');
               if (tierFolder) {
@@ -277,7 +282,6 @@ async function handleScheduleUpdate(baseFolder) {
               }
             
 
-              //locationText.textItem.contents = String(divLocation).toUpperCase();
               await fillColor(divisionColorLayer, divColorHex);
 
               // Dynamic box creation using AREA layer bounds
@@ -483,7 +487,8 @@ async function handleScheduleUpdate(baseFolder) {
               }
 
               // Export per chunk
-              const exportFile = await prepareScheduleExport(gamedayFolder, week, docType, divAbb, dateShort, gameType, a);
+              divisionExportCounts[divAbb] = (divisionExportCounts[divAbb] || 0) + 1;
+              const exportFile = await prepareScheduleExport(gamedayFolder, week, docType, divAbb, divisionExportCounts[divAbb]);
               const cdnPath = exportHandler.buildCdnPath(baseFolder.name, week, docType, exportFile.name);
               await exportHandler.exportPng(doc, exportFile, cdnPath, cloudExportEnabled);
 
@@ -674,13 +679,12 @@ async function ensureFolderPath(rootFolder, segments) {
 }
 
 // Prepare and return a FileEntry for Schedule PNG export
-async function prepareScheduleExport(gamedayFolder, week, docType, conf, dateShort, type, chunkIndex) {
+async function prepareScheduleExport(gamedayFolder, week, docType, divAbb, sequenceNumber) {
   const weekFolderName = `Week ${week}`;
   const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', weekFolderName, docType]);
-  const safeConf = sanitizeFilename(conf);
-  const safeDate = sanitizeFilename(dateShort);
-  const safeType = sanitizeFilename(type);
-  const fileName = `${safeConf}_${safeDate}_${safeType}_${chunkIndex}.png`;
+  const safeDivAbb = sanitizeFilename(divAbb);
+  const n = Number(sequenceNumber) || 1;
+  const fileName = `${safeDivAbb}_Schedule_${n}.png`;
   return await exportFolder.createFile(fileName, { overwrite: true });
 }
 

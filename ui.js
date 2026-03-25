@@ -89,6 +89,7 @@ function updateActionButtons() {
   const scheduleBtn = document.getElementById("btnSchedule");
   const standingsBtn = document.getElementById("btnStandings");
   const statsBtn = document.getElementById("btnStats");
+  const haveADayBtn = document.getElementById("btnHaveADay");
   const thumbnailBtn = document.getElementById("btnThumbnail");
   const divPreviewsBtn = document.getElementById("btnDivPreviews");
   const activeDivisionsBtn = document.getElementById("btnActiveDivisions");
@@ -96,6 +97,7 @@ function updateActionButtons() {
 
   if (!hasFolderSelected) {
     scheduleBtn.disabled = standingsBtn.disabled = statsBtn.disabled = true;
+    if (haveADayBtn) haveADayBtn.disabled = true;
     if (thumbnailBtn) thumbnailBtn.disabled = true;
     if (divPreviewsBtn) divPreviewsBtn.disabled = true;
     if (activeDivisionsBtn) activeDivisionsBtn.disabled = true;
@@ -119,6 +121,7 @@ function updateActionButtons() {
     scheduleBtn.disabled = !(isAll || isValidDiv || isValidConf);
   }
   standingsBtn.disabled = statsBtn.disabled = !(isAll || isValidDiv);
+  if (haveADayBtn) haveADayBtn.disabled = !(isAll || isValidDiv);
   if (thumbnailBtn) thumbnailBtn.disabled = !(isAll || isValidDiv);
   if (teamsUpdateBtn) teamsUpdateBtn.disabled = !(isAll || isValidDiv || isValidConf);
 }

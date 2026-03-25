@@ -89,6 +89,8 @@ async function getLeagueCsvUrls(baseFolder) {
   let playerUrl = "";
   let playoffGoalieUrl = "";
   let playoffPlayerUrl = "";
+  let haveADayPlayerUrl = "";
+  let haveADayGoalieUrl = "";
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -103,6 +105,8 @@ async function getLeagueCsvUrls(baseFolder) {
       playerUrl    = String(getValue(row, "PLAYER STATS", headerMap) || "").trim();
       playoffGoalieUrl = String(getValue(row, "PLAYOFF GOALIE STATS", headerMap) || "").trim();
       playoffPlayerUrl = String(getValue(row, "PLAYOFF PLAYER STATS", headerMap) || "").trim();
+      haveADayPlayerUrl = String(getValue(row, "HAVE A DAY PLAYER", headerMap) || "").trim();
+      haveADayGoalieUrl = String(getValue(row, "HAVE A DAY GOALIE", headerMap) || "").trim();
       break;
     }
   }
@@ -111,7 +115,7 @@ async function getLeagueCsvUrls(baseFolder) {
     throw new Error(`League "${leagueName}" not found or URLs missing in master league sheet.`);
   }
 
-  const urls = { divisionUrl, teamUrl, scheduleUrl, standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl };
+  const urls = { divisionUrl, teamUrl, scheduleUrl, standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl, haveADayPlayerUrl, haveADayGoalieUrl };
   leagueUrlCache[leagueName] = urls;
   return urls;
 }
@@ -163,7 +167,7 @@ async function getScheduleSheet(baseFolder /*, sheetNameIgnored */) {
  * Convenience helper for stats sheets (STANDINGS / GOALIE STATS / PLAYER STATS / PLAYOFF GOALIE STATS / PLAYOFF PLAYER STATS columns)
  */
 async function getStatsSheet(baseFolder, sheetName) {
-  const { standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl } = await getLeagueCsvUrls(baseFolder);
+  const { standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl, haveADayPlayerUrl, haveADayGoalieUrl } = await getLeagueCsvUrls(baseFolder);
 
   let targetUrl = "";
   if (sheetName === "STANDINGS") {
@@ -176,6 +180,10 @@ async function getStatsSheet(baseFolder, sheetName) {
     targetUrl = playoffGoalieUrl;
   } else if (sheetName === "PLAYOFF PLAYER STATS") {
     targetUrl = playoffPlayerUrl;
+  } else if (sheetName === "HAVE A DAY PLAYER") {
+    targetUrl = haveADayPlayerUrl;
+  } else if (sheetName === "HAVE A DAY GOALIE") {
+    targetUrl = haveADayGoalieUrl;
   } else {
     throw new Error(`Unknown stats sheet name "${sheetName}"`);
   }
@@ -495,6 +503,171 @@ async function loadStandings(baseFolder) {
 }
 
 /**
+ * Load "HAVE A DAY PLAYER" data from Google Sheets.
+ * Returns { week, rows } where rows are normalized stat objects.
+ */
+async function loadHaveADayPlayers(baseFolder) {
+  try {
+    const sheet = await getStatsSheet(baseFolder, "HAVE A DAY PLAYER");
+    if (!sheet || !sheet.length) {
+      return { week: 0, rows: [] };
+    }
+
+    // Header can be offset by metadata rows. Find row containing core columns.
+    let headerIdx = -1;
+    for (let i = 0; i < sheet.length; i++) {
+      const rowUpper = (sheet[i] || []).map((v) => String(v || "").trim().toUpperCase());
+      if (rowUpper.includes("WEEK") && rowUpper.includes("FIRST NAME") && rowUpper.includes("LAST NAME")) {
+        headerIdx = i;
+        break;
+      }
+    }
+    if (headerIdx < 0) {
+      console.warn('Could not find HAVE A DAY header row; returning empty set.');
+      return { week: 0, rows: [] };
+    }
+
+    // Detect current week from metadata text like "CURRENT WEEK: 0".
+    let currentWeek = 0;
+    for (let i = 0; i < headerIdx; i++) {
+      const meta = (sheet[i] || []).join(" ");
+      const m = String(meta).match(/CURRENT\s*WEEK\s*:\s*(-?\d+)/i);
+      if (m) {
+        currentWeek = Number(m[1]);
+        break;
+      }
+    }
+
+    const headerMap = createHeaderMap(sheet[headerIdx]);
+    // Normalize headers (trim + uppercase) because sheets sometimes include
+    // subtle spacing/case variants like "Team " or "week".
+    const normalizedHeaderMap = {};
+    for (const key in headerMap) {
+      const norm = String(key || "").trim().toUpperCase();
+      if (norm) normalizedHeaderMap[norm] = headerMap[key];
+    }
+
+    const getRowValue = (row, candidates) => {
+      for (let i = 0; i < candidates.length; i++) {
+        const key = String(candidates[i] || "").trim().toUpperCase();
+        const idx = normalizedHeaderMap[key];
+        if (typeof idx === "number") return row[idx];
+      }
+      return "";
+    };
+
+    const rows = [];
+    for (let n = headerIdx + 1; n < sheet.length; n++) {
+      const row = sheet[n];
+      if (!row || row.length === 0) continue;
+
+      const player = {
+        week: Number(getRowValue(row, ["WEEK"]) || 0),
+        firstName: getRowValue(row, ["FIRST NAME", "FIRST"]),
+        lastName: getRowValue(row, ["LAST NAME", "LAST"]),
+        number: getRowValue(row, ["NUMBER", "#", "NO", "NO."]),
+        teamName: getRowValue(row, ["TEAM", "TEAM NAME"]),
+        division: getRowValue(row, ["DIVISION", "DIV"]),
+        goals: Number(getRowValue(row, ["GOALS", "G"]) || 0),
+        assists: Number(getRowValue(row, ["ASSISTS", "A"]) || 0),
+        points: Number(getRowValue(row, ["POINTS", "PTS"]) || 0),
+        wins: Number(getRowValue(row, ["WINS", "W"]) || 0)
+      };
+      player.fullName = `${player.firstName || ""} ${player.lastName || ""}`.trim();
+
+      if (!player.teamName || !player.fullName) continue;
+      rows.push(player);
+    }
+
+    console.log(`✅ Built ${rows.length} HAVE A DAY player rows (Week ${currentWeek})`);
+    return { week: currentWeek, rows };
+  } catch (error) {
+    console.error("Error loading HAVE A DAY PLAYER data:", error);
+    return { week: 0, rows: [] };
+  }
+}
+
+/**
+ * Load "HAVE A DAY GOALIE" data from Google Sheets.
+ * Returns { week, rows } where rows are normalized stat objects.
+ */
+async function loadHaveADayGoalies(baseFolder) {
+  try {
+    const sheet = await getStatsSheet(baseFolder, "HAVE A DAY GOALIE");
+    if (!sheet || !sheet.length) {
+      return { week: 0, rows: [] };
+    }
+
+    let headerIdx = -1;
+    for (let i = 0; i < sheet.length; i++) {
+      const rowUpper = (sheet[i] || []).map((v) => String(v || "").trim().toUpperCase());
+      if (rowUpper.includes("WEEK") && rowUpper.includes("FIRST NAME") && rowUpper.includes("LAST NAME")) {
+        headerIdx = i;
+        break;
+      }
+    }
+    if (headerIdx < 0) {
+      console.warn("Could not find HAVE A DAY GOALIE header row; returning empty set.");
+      return { week: 0, rows: [] };
+    }
+
+    let currentWeek = 0;
+    for (let i = 0; i < headerIdx; i++) {
+      const meta = (sheet[i] || []).join(" ");
+      const m = String(meta).match(/CURRENT\s*WEEK\s*:\s*(-?\d+)/i);
+      if (m) {
+        currentWeek = Number(m[1]);
+        break;
+      }
+    }
+
+    const headerMap = createHeaderMap(sheet[headerIdx]);
+    const normalizedHeaderMap = {};
+    for (const key in headerMap) {
+      const norm = String(key || "").trim().toUpperCase();
+      if (norm) normalizedHeaderMap[norm] = headerMap[key];
+    }
+
+    const getRowValue = (row, candidates) => {
+      for (let i = 0; i < candidates.length; i++) {
+        const key = String(candidates[i] || "").trim().toUpperCase();
+        const idx = normalizedHeaderMap[key];
+        if (typeof idx === "number") return row[idx];
+      }
+      return "";
+    };
+
+    const rows = [];
+    for (let n = headerIdx + 1; n < sheet.length; n++) {
+      const row = sheet[n];
+      if (!row || row.length === 0) continue;
+
+      const goalie = {
+        week: Number(getRowValue(row, ["WEEK"]) || 0),
+        firstName: getRowValue(row, ["FIRST NAME", "FIRST"]),
+        lastName: getRowValue(row, ["LAST NAME", "LAST"]),
+        number: getRowValue(row, ["NUMBER", "#", "NO", "NO."]),
+        teamName: getRowValue(row, ["TEAM", "TEAM NAME"]),
+        division: getRowValue(row, ["DIVISION", "DIV"]),
+        gp: Number(getRowValue(row, ["GP", "GAMES PLAYED"]) || 0),
+        gaa: getRowValue(row, ["GAA"]),
+        wins: Number(getRowValue(row, ["WINS", "W"]) || 0)
+      };
+      goalie.fullName = `${goalie.firstName || ""} ${goalie.lastName || ""}`.trim();
+
+      if (!goalie.teamName || !goalie.fullName) continue;
+      rows.push(goalie);
+    }
+
+    console.log(`✅ Built ${rows.length} HAVE A DAY goalie rows (Week ${currentWeek})`);
+    return { week: currentWeek, rows };
+  } catch (error) {
+    console.error("Error loading HAVE A DAY GOALIE data:", error);
+    return { week: 0, rows: [] };
+  }
+}
+
+/**
  * Load schedule from Google Sheets ("ALL GAMES" tab) and build structured game objects joined with division info
  * Returns { scheduleData: Game[], week, year }
  */
@@ -659,6 +832,8 @@ module.exports = {
   loadPlayoffPlayerStats,
   loadPlayoffGoalieStats,
   loadStandings,
+  loadHaveADayPlayers,
+  loadHaveADayGoalies,
   loadSchedule,
   loadLeagueConfig,
   getUserDivision,
