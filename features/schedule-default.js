@@ -112,8 +112,6 @@ async function handleScheduleUpdate(baseFolder) {
 
     // Track previously opened doc id (for ALL mode)
     let previousDocId = null;
-    // Per-group export counters for this run/week
-    const exportCounts = {};
 
     // Iterate conferences
     for (let d = 0; d < activeConfs.length; d++) {
@@ -166,7 +164,7 @@ async function handleScheduleUpdate(baseFolder) {
         for (let t = 0; t < activeTypes.length; t++) {
           let finalGames = activeTypes[t];
           const gameType = finalGames[0].gameType
-          const gameSeason = finalGames[0].season;
+          const seasonLabel = String(finalGames[0].gameType);
 
           // Determine doc type by whether this is current week has scores or upcoming week
           let docType = 'Upcoming Games';
@@ -442,9 +440,15 @@ async function handleScheduleUpdate(baseFolder) {
               }
 
               // Export per chunk
-              const exportKey = String(confGames[0].div1 || conf || 'SCHEDULE');
-              exportCounts[exportKey] = (exportCounts[exportKey] || 0) + 1;
-              const exportFile = await prepareScheduleExport(gamedayFolder, week, docType, exportKey, exportCounts[exportKey]);
+              const exportFile = await prepareScheduleExport(
+                gamedayFolder,
+                week,
+                docType,
+                conf,
+                dateShort,
+                seasonLabel,
+                a + 1
+              );
               const cdnPath = exportHandler.buildCdnPath(baseFolder.name, week, docType, exportFile.name);
               await exportHandler.exportPng(doc, exportFile, cdnPath, cloudExportEnabled);
 
@@ -584,12 +588,14 @@ async function ensureFolderPath(rootFolder, segments) {
 }
 
 // Prepare and return a FileEntry for Schedule PNG export
-async function prepareScheduleExport(gamedayFolder, week, docType, exportKey, sequenceNumber) {
+async function prepareScheduleExport(gamedayFolder, week, docType, conf, dateShort, season, sequenceNumber) {
   const weekFolderName = `Week ${week}`;
   const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', weekFolderName, docType]);
-  const safeKey = sanitizeFilename(exportKey);
+  const safeConf = sanitizeFilename(conf);
+  const safeDate = sanitizeFilename(dateShort);
+  const safeSeason = sanitizeFilename(season);
   const n = Number(sequenceNumber) || 1;
-  const fileName = `${safeKey}_Schedule_${n}.png`;
+  const fileName = `${safeConf}_${safeDate}_${safeSeason}_${n}.png`;
   return await exportFolder.createFile(fileName, { overwrite: true });
 }
 
