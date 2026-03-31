@@ -405,7 +405,7 @@ async function handleStandingsUpdate(baseFolder) {
             }
 
             if (scale === 100) {
-              await translate(table, 0, Math.round((maxAreaHeight - totalHeight) / 3));
+              await translate(table, 0, Math.round((maxAreaHeight - totalHeight) / 5));
             }
           }
 

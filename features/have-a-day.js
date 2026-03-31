@@ -190,9 +190,17 @@ async function handleHaveADayUpdate(baseFolder) {
         await updateStatFolder(stats, "Stat 1", row.stat1);
         await updateStatFolder(stats, "Stat 2", row.stat2);
         await updateStatFolder(stats, "Stat 3", row.stat3);
+        if (row.role === "PLAYER") {
+          setPlayerStatLabels(stats, row);
+        } else if (row.role === "GOALIE") {
+          setGoalieStatLabels(stats, row);
+        }
 
         // TEAM COLORS
-        if (teamColorStats) await fillColor(teamColorStats, teamCtx.color2);
+        if (teamColorStats) {
+          const statsColor = isBlackOrWhite(teamCtx.color2) ? teamCtx.color3 : teamCtx.color2;
+          await fillColor(teamColorStats, statsColor);
+        }
         if (jersey) {
           const jerseyColor1 = getByName(jersey, "TEAM COLOR");
           const jerseyColor2 = getByName(jersey, "TEAM COLOR 2");
@@ -279,6 +287,33 @@ function setStatTextColors(statsRoot, teamColor) {
   }
 }
 
+function setPlayerStatLabels(statsRoot, row) {
+  if (!statsRoot) return;
+  setStatLabelText(statsRoot, "Stat 1", singularOrPluralLabel(row?.stat1, "GOAL", "GOALS"));
+  setStatLabelText(statsRoot, "Stat 2", singularOrPluralLabel(row?.stat2, "POINT", "POINTS"));
+  setStatLabelText(statsRoot, "Stat 3", singularOrPluralLabel(row?.stat3, "WIN", "WINS"));
+}
+
+function setGoalieStatLabels(statsRoot, row) {
+  if (!statsRoot) return;
+  setStatLabelText(statsRoot, "Stat 1", singularOrPluralLabel(row?.stat1, "GAME", "GAMES"));
+  setStatLabelText(statsRoot, "Stat 3", singularOrPluralLabel(row?.stat3, "WIN", "WINS"));
+}
+
+function setStatLabelText(statsRoot, statFolderName, label) {
+  const statFolder = getByName(statsRoot, statFolderName);
+  if (!statFolder) return;
+  const statLabelLayer = getByName(statFolder, "STAT");
+  if (statLabelLayer && statLabelLayer.textItem) {
+    statLabelLayer.textItem.contents = label;
+  }
+}
+
+function singularOrPluralLabel(value, singular, plural) {
+  const n = Number(value);
+  return Number.isFinite(n) && n === 1 ? singular : plural;
+}
+
 function getTeamContext(teamName, rowDivision, teams, divs) {
   const teamNeedle = normalizeTeamKey(teamName);
   if (!teamNeedle) return null;
@@ -342,6 +377,14 @@ function pickColor(...candidates) {
     if (c) return c;
   }
   return "000000";
+}
+
+function isBlackOrWhite(hex) {
+  const normalized = String(hex || "")
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase();
+  return normalized === "000000" || normalized === "ffffff";
 }
 
 async function resolveHaveADayTemplate(gamedayFolder, templateName) {
