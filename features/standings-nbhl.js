@@ -489,7 +489,11 @@ async function handleStandingsUpdate(baseFolder) {
             if (teamNameLayer) setTextColor(teamNameLayer, tColor);
             if (recordText) setTextColor(recordText, tColor);
             if (pctText) setTextColor(pctText, tColor);
-            if (ptsText) setTextColor(ptsText, tColor);
+            if (ptsText) {
+              const ptsColor = new app.SolidColor();
+              ptsColor.rgb.hexValue = '252525';
+              ptsText.textItem.characterStyle.color = ptsColor;
+            }
           }
 
           // After finishing this chunk, record how many teams we've output so far
