@@ -480,6 +480,19 @@ async function handleScheduleUpdate(baseFolder) {
                   if (win2) win2.visible = team2Wins;
                   if (box1) await fillColor(box1, team1Wins ? 'ffffff' : '535353');
                   if (box2) await fillColor(box2, team2Wins ? 'ffffff' : '535353');
+                  if (score1 && score2) {
+                    if (team1Wins) {
+                      setTextHex(score1, '000000');
+                      setTextHex(score2, 'ffffff');
+                    } else if (team2Wins) {
+                      setTextHex(score1, 'ffffff');
+                      setTextHex(score2, '000000');
+                    } else {
+                      // Tie or missing numeric scores: keep both readable on dark boxes.
+                      setTextHex(score1, 'ffffff');
+                      setTextHex(score2, 'ffffff');
+                    }
+                  }
                 } else {
                   if (timeLayer) timeLayer.textItem.contents = String(finalGames[i].time || '').toUpperCase();
                   if (timeZoneLayer) {
