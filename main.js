@@ -38,11 +38,18 @@ document.getElementById("btnStats").addEventListener("click", async () => {
   await statsModule.handleStatsUpdate(baseFolder);
 });
 
-document.getElementById("btnHaveADay").addEventListener("click", async () => {
+document.getElementById("btnHaveADayPlayer").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();
   const haveADayModule = require("./features/have-a-day.js");
-  await haveADayModule.handleHaveADayUpdate(baseFolder);
+  await haveADayModule.handleHaveADayUpdate(baseFolder, "PLAYER");
+});
+
+document.getElementById("btnHaveADayGoalie").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const haveADayModule = require("./features/have-a-day.js");
+  await haveADayModule.handleHaveADayUpdate(baseFolder, "GOALIE");
 });
 
 document.getElementById("btnThumbnail").addEventListener("click", async () => {

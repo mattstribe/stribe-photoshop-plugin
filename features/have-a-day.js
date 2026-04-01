@@ -7,12 +7,14 @@ const exportHandler = require("../utils/exportHandler.js");
 
 const DOC_ID = "HAVE-A-DAY";
 const DOC_EXPORT = "Have-A-Day";
+const DOC_EXPORT_PLAYER = "Have-A-Day Player";
+const DOC_EXPORT_GOALIE = "Have-A-Day Goalie";
 const PLAYER_TEMPLATE = "HAVE-A-DAY-PLAYER.psd";
 const GOALIE_TEMPLATE = "HAVE-A-DAY-GOALIE.psd";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function handleHaveADayUpdate(baseFolder) {
+async function handleHaveADayUpdate(baseFolder, roleFilter = "ALL") {
   const statusEl = document.getElementById("status");
   const exportToCloudCheckbox = document.getElementById("exportToCloudCheckbox");
   const cloudExportEnabled = exportToCloudCheckbox && exportToCloudCheckbox.checked === true;
@@ -62,8 +64,16 @@ async function handleHaveADayUpdate(baseFolder) {
       // prefer the player graphic and skip the goalie duplicate.
       .filter((r) => !playerIdentitySet.has(`${normalizeTeamKey(r.fullName)}|${normalizeTeamKey(r.teamName)}`));
 
-    const activeRows = [...activePlayerRows, ...activeGoalieRows];
-    console.log(`[HAVE-A-DAY] league=${baseFolder?.name} week=${week} playerRows=${activePlayerRows.length} goalieRows=${activeGoalieRows.length} activeRows=${activeRows.length}`);
+    const normalizedRoleFilter = String(roleFilter || "ALL").toUpperCase();
+    let activeRows = [];
+    if (normalizedRoleFilter === "PLAYER") {
+      activeRows = activePlayerRows;
+    } else if (normalizedRoleFilter === "GOALIE") {
+      activeRows = activeGoalieRows;
+    } else {
+      activeRows = [...activePlayerRows, ...activeGoalieRows];
+    }
+    console.log(`[HAVE-A-DAY] league=${baseFolder?.name} week=${week} filter=${normalizedRoleFilter} playerRows=${activePlayerRows.length} goalieRows=${activeGoalieRows.length} activeRows=${activeRows.length}`);
     if (activeRows.length) {
       console.log("[HAVE-A-DAY] sample rows:", activeRows.slice(0, 5).map((r) => ({
         role: r.role,
@@ -79,7 +89,8 @@ async function handleHaveADayUpdate(baseFolder) {
     }
 
     if (!activeRows.length) {
-      statusEl.textContent = `⚠️ No HAVE-A-DAY rows for Week ${week}`;
+      const emptyLabel = normalizedRoleFilter === "ALL" ? "HAVE-A-DAY rows" : `${normalizedRoleFilter} HAVE-A-DAY rows`;
+      statusEl.textContent = `⚠️ No ${emptyLabel} for Week ${week}`;
       return;
     }
 
@@ -123,7 +134,8 @@ async function handleHaveADayUpdate(baseFolder) {
       }
       const { file: templateFile, folder: templateFolder } = templateInfo;
 
-      const exportFolder = await ensureFolderPath(gamedayFolder, ["Exports", `Week ${week}`, DOC_EXPORT]);
+      const exportCategory = row.role === "GOALIE" ? DOC_EXPORT_GOALIE : DOC_EXPORT_PLAYER;
+      const exportFolder = await ensureFolderPath(gamedayFolder, ["Exports", `Week ${week}`, exportCategory]);
       const exportFile = await exportFolder.createFile(
         sanitizeFilename(`${teamCtx.teamName}_${row.lastName}_${row.role}_Have-A-Day.png`),
         { overwrite: true }
@@ -142,7 +154,8 @@ async function handleHaveADayUpdate(baseFolder) {
         stats: { stat1: row.stat1, stat2: row.stat2, stat3: row.stat3, number: row.number }
       });
 
-      statusEl.innerHTML = `Updating HAVE-A-DAY ${i + 1}/${activeRows.length}...`;
+      const runLabel = normalizedRoleFilter === "ALL" ? "HAVE-A-DAY" : `HAVE-A-DAY ${normalizedRoleFilter}`;
+      statusEl.innerHTML = `Updating ${runLabel} ${i + 1}/${activeRows.length}...`;
 
       await core.executeAsModal(async () => {
         // Close the previous processed doc first so it cannot steal focus
@@ -241,7 +254,7 @@ async function handleHaveADayUpdate(baseFolder) {
         if (playerNumber && playerNumber.textItem) setTextColor(playerNumber, teamCtx.color1);
         setStatTextColors(stats, teamCtx.color1);
 
-        const cdnPath = exportHandler.buildCdnPath(baseFolder.name, week, DOC_EXPORT, exportFile.name);
+        const cdnPath = exportHandler.buildCdnPath(baseFolder.name, week, exportCategory, exportFile.name);
         await exportHandler.exportPng(doc, exportFile, cdnPath, cloudExportEnabled);
         console.log(`[HAVE-A-DAY] Exported: ${exportFile.name}`);
 
@@ -259,7 +272,8 @@ async function handleHaveADayUpdate(baseFolder) {
       skippedNoTeam,
       skippedNoTemplate
     });
-    statusEl.innerHTML = `✅ Updated ${processed} HAVE-A-DAY graphics`;
+    const doneLabel = normalizedRoleFilter === "ALL" ? "HAVE-A-DAY" : `HAVE-A-DAY ${normalizedRoleFilter}`;
+    statusEl.innerHTML = `✅ Updated ${processed} ${doneLabel} graphics`;
   } catch (err) {
     statusEl.textContent = "⚠️ Error updating HAVE-A-DAY";
     console.error("Error:", err);
