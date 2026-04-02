@@ -52,7 +52,7 @@ async function handleStatsUpdate(baseFolder) {
     console.log(`Selected division: ${userDiv}`);
 
     // Build activeDivs from schedule, separated by gameType (regular season vs playoffs).
-    // By default we only run STATS for divisions that have games in the current week (not next week).
+    // By default we only run STATS for divisions that have games in the current week or next week.
     // If the "allDivisionsCheckbox" is checked in the UI, we instead run STATS
     // for every division (or just the selected one) regardless of games.
     const activeRegularDivs = [];
@@ -87,7 +87,7 @@ async function handleStatsUpdate(baseFolder) {
           for (let n = 0; n < schedule.length; n++) {
             const isSameDiv = (schedule[n].conf + ' ' + schedule[n].division1) === (divs[m].conf + ' ' + divs[m].div);
             const gameWeek = Number(schedule[n].week);
-            const isWeek = gameWeek === week;
+            const isWeek = gameWeek === week
             if (isSameDiv && isWeek) {
               if (schedule[n].gameType === 'Playoffs') {
                 playoffGames.push(schedule[n]);
@@ -105,7 +105,7 @@ async function handleStatsUpdate(baseFolder) {
         for (let n = 0; n < schedule.length; n++) {
           const isSameDiv = (schedule[n].conf + ' ' + schedule[n].division1) === userDiv;
           const gameWeek = Number(schedule[n].week);
-          const isWeek = gameWeek === week;
+          const isWeek = gameWeek === week
           if (isSameDiv && isWeek) {
             if (schedule[n].gameType === 'Playoffs') {
               playoffGames.push(schedule[n]);
