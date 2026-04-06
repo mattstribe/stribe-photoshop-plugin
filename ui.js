@@ -92,6 +92,7 @@ function updateActionButtons() {
   const haveADayPlayerBtn = document.getElementById("btnHaveADayPlayer");
   const haveADayGoalieBtn = document.getElementById("btnHaveADayGoalie");
   const thumbnailBtn = document.getElementById("btnThumbnail");
+  const topPlaysBtn = document.getElementById("btnTopPlays");
   const divPreviewsBtn = document.getElementById("btnDivPreviews");
   const activeDivisionsBtn = document.getElementById("btnActiveDivisions");
   const teamsUpdateBtn = document.getElementById("btnTeamsUpdate");
@@ -101,6 +102,7 @@ function updateActionButtons() {
     if (haveADayPlayerBtn) haveADayPlayerBtn.disabled = true;
     if (haveADayGoalieBtn) haveADayGoalieBtn.disabled = true;
     if (thumbnailBtn) thumbnailBtn.disabled = true;
+    if (topPlaysBtn) topPlaysBtn.disabled = true;
     if (divPreviewsBtn) divPreviewsBtn.disabled = true;
     if (activeDivisionsBtn) activeDivisionsBtn.disabled = true;
     if (teamsUpdateBtn) teamsUpdateBtn.disabled = true;
@@ -126,6 +128,7 @@ function updateActionButtons() {
   if (haveADayPlayerBtn) haveADayPlayerBtn.disabled = !(isAll || isValidDiv);
   if (haveADayGoalieBtn) haveADayGoalieBtn.disabled = !(isAll || isValidDiv);
   if (thumbnailBtn) thumbnailBtn.disabled = !(isAll || isValidDiv);
+  if (topPlaysBtn) topPlaysBtn.disabled = !(isAll || isValidDiv);
   if (teamsUpdateBtn) teamsUpdateBtn.disabled = !(isAll || isValidDiv || isValidConf);
 }
 

@@ -59,6 +59,13 @@ document.getElementById("btnThumbnail").addEventListener("click", async () => {
   await thumbnailModule.handleThumbnailUpdate(baseFolder);
 });
 
+document.getElementById("btnTopPlays").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const topPlaysModule = require("./features/top-plays.js");
+  await topPlaysModule.handleTopPlaysUpdate(baseFolder);
+});
+
 document.getElementById("btnDivPreviews").addEventListener("click", async () => {
   await ui.initializeUI();
   const baseFolder = await storage.getBaseFolder();

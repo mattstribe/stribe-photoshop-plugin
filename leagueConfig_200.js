@@ -91,6 +91,7 @@ async function getLeagueCsvUrls(baseFolder) {
   let playoffPlayerUrl = "";
   let haveADayPlayerUrl = "";
   let haveADayGoalieUrl = "";
+  let topPlaysUrl = "";
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -107,6 +108,7 @@ async function getLeagueCsvUrls(baseFolder) {
       playoffPlayerUrl = String(getValue(row, "PLAYOFF PLAYER STATS", headerMap) || "").trim();
       haveADayPlayerUrl = String(getValue(row, "HAVE A DAY PLAYER", headerMap) || "").trim();
       haveADayGoalieUrl = String(getValue(row, "HAVE A DAY GOALIE", headerMap) || "").trim();
+      topPlaysUrl = String(getValue(row, "TOP PLAYS", headerMap) || "").trim();
       break;
     }
   }
@@ -115,7 +117,7 @@ async function getLeagueCsvUrls(baseFolder) {
     throw new Error(`League "${leagueName}" not found or URLs missing in master league sheet.`);
   }
 
-  const urls = { divisionUrl, teamUrl, scheduleUrl, standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl, haveADayPlayerUrl, haveADayGoalieUrl };
+  const urls = { divisionUrl, teamUrl, scheduleUrl, standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl, haveADayPlayerUrl, haveADayGoalieUrl, topPlaysUrl };
   leagueUrlCache[leagueName] = urls;
   return urls;
 }
@@ -167,7 +169,7 @@ async function getScheduleSheet(baseFolder /*, sheetNameIgnored */) {
  * Convenience helper for stats sheets (STANDINGS / GOALIE STATS / PLAYER STATS / PLAYOFF GOALIE STATS / PLAYOFF PLAYER STATS columns)
  */
 async function getStatsSheet(baseFolder, sheetName) {
-  const { standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl, haveADayPlayerUrl, haveADayGoalieUrl } = await getLeagueCsvUrls(baseFolder);
+  const { standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl, haveADayPlayerUrl, haveADayGoalieUrl, topPlaysUrl } = await getLeagueCsvUrls(baseFolder);
 
   let targetUrl = "";
   if (sheetName === "STANDINGS") {
@@ -184,6 +186,8 @@ async function getStatsSheet(baseFolder, sheetName) {
     targetUrl = haveADayPlayerUrl;
   } else if (sheetName === "HAVE A DAY GOALIE") {
     targetUrl = haveADayGoalieUrl;
+  } else if (sheetName === "TOP PLAYS") {
+    targetUrl = topPlaysUrl;
   } else {
     throw new Error(`Unknown stats sheet name "${sheetName}"`);
   }
@@ -668,6 +672,80 @@ async function loadHaveADayGoalies(baseFolder) {
 }
 
 /**
+ * Load "TOP PLAYS" data from Google Sheets.
+ * Returns { week, rows } where rows are normalized play objects.
+ */
+async function loadTopPlays(baseFolder) {
+  try {
+    const sheet = await getStatsSheet(baseFolder, "TOP PLAYS");
+    if (!sheet || !sheet.length) return { week: 0, rows: [] };
+
+    let headerIdx = -1;
+    for (let i = 0; i < sheet.length; i++) {
+      const rowUpper = (sheet[i] || []).map((v) => String(v || "").trim().toUpperCase());
+      if (rowUpper.includes("RANK") && rowUpper.includes("NAMES") && rowUpper.includes("TEAM")) {
+        headerIdx = i;
+        break;
+      }
+    }
+    if (headerIdx < 0) {
+      console.warn("Could not find TOP PLAYS header row; returning empty set.");
+      return { week: 0, rows: [] };
+    }
+
+    let currentWeek = 0;
+    for (let i = 0; i < headerIdx; i++) {
+      const meta = (sheet[i] || []).join(" ");
+      const m = String(meta).match(/CURRENT\s*WEEK\s*:\s*(-?\d+)/i);
+      if (m) {
+        currentWeek = Number(m[1]);
+        break;
+      }
+    }
+
+    const headerMap = createHeaderMap(sheet[headerIdx]);
+    const normalizedHeaderMap = {};
+    for (const key in headerMap) {
+      const norm = String(key || "").trim().toUpperCase();
+      if (norm) normalizedHeaderMap[norm] = headerMap[key];
+    }
+
+    const getRowValue = (row, candidates) => {
+      for (let i = 0; i < candidates.length; i++) {
+        const key = String(candidates[i] || "").trim().toUpperCase();
+        const idx = normalizedHeaderMap[key];
+        if (typeof idx === "number") return row[idx];
+      }
+      return "";
+    };
+
+    const rows = [];
+    for (let n = headerIdx + 1; n < sheet.length; n++) {
+      const row = sheet[n];
+      if (!row || row.length === 0) continue;
+      const rank = getRowValue(row, ["RANK", "#"]);
+      const names = getRowValue(row, ["NAMES", "NAME"]);
+      const teamName = getRowValue(row, ["TEAM", "TEAM NAME"]);
+      const divAbb = getRowValue(row, ["DIVISION ABB", "DIVISION ABB.", "DIV ABB", "DIVISION", "DIV"]);
+
+      if (!rank || !teamName) continue;
+      rows.push({
+        rank: String(rank).trim(),
+        names: String(names || "").trim(),
+        teamName: String(teamName).trim(),
+        divAbb: String(divAbb || "").trim().toUpperCase()
+      });
+    }
+
+    console.log(`✅ Built ${rows.length} TOP PLAYS rows (Week ${currentWeek})`);
+    return { week: currentWeek, rows };
+  } catch (error) {
+    console.error("Error loading TOP PLAYS data:", error);
+    return { week: 0, rows: [] };
+  }
+}
+
+/**
  * Load schedule from Google Sheets ("ALL GAMES" tab) and build structured game objects joined with division info
  * Returns { scheduleData: Game[], week, year }
  */
@@ -834,6 +912,7 @@ module.exports = {
   loadStandings,
   loadHaveADayPlayers,
   loadHaveADayGoalies,
+  loadTopPlays,
   loadSchedule,
   loadLeagueConfig,
   getUserDivision,
