@@ -234,19 +234,20 @@ sp-button[disabled]::part(button):hover {
   background-color: #4b5563;
 }
 
-/* Export to Cloud: center checkbox + label in the panel */
+/* Export to Cloud: directly under Ignore Week, left-aligned */
 .export-cloud-row {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   width: 100%;
-  margin: 4px 0 2px;
+  margin: 0 0 8px;
   box-sizing: border-box;
 }
 
 .export-cloud-row sp-checkbox {
   width: auto;
   max-width: 100%;
+  margin-left: 0;
 }
 
 /* Checkbox: show pointer hand on hover */
