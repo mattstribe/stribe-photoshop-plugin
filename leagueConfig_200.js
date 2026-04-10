@@ -245,7 +245,7 @@ async function loadDivisionInfo(baseFolder) {
         color2:  normalizeColor(getValue(row, 'Color 2', headerMap)),
         timeZone: getValue(row, 'Time Zone', headerMap),
         location: getValue(row, 'Location', headerMap),
-        divShort: getValue(row, 'divShort', headerMap)
+        divShort: getValue(row, 'DivShort', headerMap)
       };
       if (!divObject.conf && !divObject.div) continue;
       divs.push(divObject);

@@ -315,6 +315,8 @@ async function handleScheduleUpdate(baseFolder) {
 
                 // Determine division + abb for logos path
                 const divAbb = finalGames[i].div1;
+                const team1DivAbb = divAbb;
+                const team2DivAbb = finalGames[i].div2 || divAbb;
                 const division = finalGames[i].division1;
                 // Find short division label if available
                 let divisionShort = null;
@@ -394,18 +396,18 @@ async function handleScheduleUpdate(baseFolder) {
 
                 // Logos with fallback to LeagueLogo.png
                 if (t1Found) {
-                  const logo1Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(t1Full)}.png`;
+                  const logo1Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(team1DivAbb)}/${encodeURIComponent(t1Full)}.png`;
                   let ok1 = await imageHandler.replaceLayerWithImage(logo1, logo1Url);
-                  if (!ok1) ok1 = await imageHandler.replaceLayerWithImage(logo1, `LOGOS/TEAMS/${conf}/${divAbb}/${t1Full}.png`, baseFolder);
+                  if (!ok1) ok1 = await imageHandler.replaceLayerWithImage(logo1, `LOGOS/TEAMS/${conf}/${team1DivAbb}/${t1Full}.png`, baseFolder);
                   if (!ok1) await imageHandler.replaceLayerWithImage(logo1, "LOGOS/LeagueLogo.png", baseFolder);
                 } else {
                   await imageHandler.replaceLayerWithImage(logo1, "LOGOS/LeagueLogo.png", baseFolder);
                 }
 
                 if (t2Found) {
-                  const logo2Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(t2Full)}.png`;
+                  const logo2Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(team2DivAbb)}/${encodeURIComponent(t2Full)}.png`;
                   let ok2 = await imageHandler.replaceLayerWithImage(logo2, logo2Url);
-                  if (!ok2) ok2 = await imageHandler.replaceLayerWithImage(logo2, `LOGOS/TEAMS/${conf}/${divAbb}/${t2Full}.png`, baseFolder);
+                  if (!ok2) ok2 = await imageHandler.replaceLayerWithImage(logo2, `LOGOS/TEAMS/${conf}/${team2DivAbb}/${t2Full}.png`, baseFolder);
                   if (!ok2) await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
                 } else {
                   await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
