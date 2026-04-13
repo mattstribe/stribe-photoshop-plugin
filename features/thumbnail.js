@@ -23,13 +23,34 @@ async function handleThumbnailUpdate(baseFolder) {
       leagueConfig.loadSchedule(baseFolder)
     ]);
 
-    const { divs, teams } = leagueData;
+    const { divs, confs, teams } = leagueData;
     const { schedule, week, year } = scheduleData;
+
+    // Read user input (division abb, conference name, or ALL).
+    const input = String(document.getElementById("divisionInput")?.value || "").trim().toUpperCase();
+    let selectedConf = null;
+    let selectedDivAbb = null;
+
+    if (input && input !== "ALL") {
+      const divMatch = divs.find((d) => input === String(d.abb || "").trim().toUpperCase());
+      if (divMatch) {
+        selectedDivAbb = String(divMatch.abb || "").trim();
+      } else {
+        const confMatch = confs.find((c) => input === String(c.conf || "").trim().toUpperCase());
+        if (confMatch) selectedConf = String(confMatch.conf || "").trim();
+      }
+    }
 
     // Only process current-week games with final scores/status.
     const finalGames = schedule.filter((g) => {
       const isCurrentWeek = Number(g.week) === Number(week);
       if (!isCurrentWeek) return false;
+
+      const gameDivAbb = String(g.div1 || "").trim();
+      const gameConf = String(g.conf || "").trim();
+      if (selectedDivAbb && gameDivAbb !== selectedDivAbb) return false;
+      if (selectedConf && !selectedDivAbb && gameConf !== selectedConf) return false;
+
       const s1 = String(g.score1 ?? "").trim();
       const s2 = String(g.score2 ?? "").trim();
       const hasScores = s1 !== "" && s2 !== "";
@@ -39,7 +60,8 @@ async function handleThumbnailUpdate(baseFolder) {
     });
 
     if (!finalGames.length) {
-      statusEl.textContent = `⚠️ No final games found for Week ${week}`;
+      const selectedTag = input && input !== "ALL" ? input : "ALL";
+      statusEl.textContent = `⚠️ No final games found for ${selectedTag} (Week ${week})`;
       return;
     }
 
@@ -109,8 +131,8 @@ async function handleThumbnailUpdate(baseFolder) {
         const fullGameFolder = getByName(doc, "FULL GAME");
         const highlightsFolder = getByName(doc, "HIGHLIGHTS");
 
-        const t1 = getTeamContext(game.team1, teams, divs, conf, divAbb);
-        const t2 = getTeamContext(game.team2, teams, divs, conf, divAbb);
+        const t1 = getTeamContext(game.team1, teams, divs, conf, divAbb, game.div1);
+        const t2 = getTeamContext(game.team2, teams, divs, conf, divAbb, game.div2 || game.div1);
 
         await updateTeamFolder(team1Folder, t1, baseFolder);
         await updateTeamFolder(team2Folder, t2, baseFolder);
@@ -145,20 +167,33 @@ async function handleThumbnailUpdate(baseFolder) {
       processed += 1;
     }
 
-    statusEl.innerHTML = `✅ Updated ${processed} thumbnails`;
+    const selectedTag = input && input !== "ALL" ? input : "ALL";
+    statusEl.innerHTML = `✅ Updated ${processed} thumbnails for ${selectedTag}`;
   } catch (err) {
     statusEl.textContent = "⚠️ Error updating THUMBNAIL";
     console.error("Error:", err);
   }
 }
 
-function getTeamContext(teamLabel, teams, divs, defaultConf, defaultDivAbb) {
+function getTeamContext(teamLabel, teams, divs, defaultConf, defaultDivAbb, gameDivAbb) {
   const nameRaw = String(teamLabel || "").trim();
   let fullTeam = nameRaw;
   let teamName = nameRaw;
   let color1 = "4a4a4a";
   let divAbb = defaultDivAbb;
   let conf = defaultConf;
+  const gameDiv = String(gameDivAbb || "").trim();
+
+  // Prefer explicit game division first (handles cross-division matchups reliably).
+  if (gameDiv) {
+    const gameDivInfo = divs.find((d) => String(d.abb || "").trim() === gameDiv);
+    if (gameDivInfo) {
+      divAbb = gameDivInfo.abb || divAbb;
+      conf = gameDivInfo.conf || conf;
+    } else {
+      divAbb = gameDiv;
+    }
+  }
 
   const match = teams.find((t) => {
     const full = String(t.fullTeam || "").trim().toUpperCase();
