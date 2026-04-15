@@ -33,10 +33,18 @@ function buildActiveDivisionsList(divs, schedule, targetWeek) {
   for (let i = 0; i < schedule.length; i++) {
     const g = schedule[i];
     if (String(g.week).trim() === '' || Number(g.week) !== Number(targetWeek)) continue;
-    if (!g.div1) continue;
-    if (abbsSeen[g.div1]) continue;
-    abbsSeen[g.div1] = true;
-    abbsWithGames.push(g.div1);
+
+    const div1 = String(g.div1 || '').trim();
+    if (div1 && !abbsSeen[div1]) {
+      abbsSeen[div1] = true;
+      abbsWithGames.push(div1);
+    }
+
+    const div2 = String(g.div2 || '').trim();
+    if (div2 && !abbsSeen[div2]) {
+      abbsSeen[div2] = true;
+      abbsWithGames.push(div2);
+    }
   }
   abbsWithGames.sort(function(a, b) { return String(a).localeCompare(String(b)); });
 

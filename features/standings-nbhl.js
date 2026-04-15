@@ -82,24 +82,38 @@ async function handleStandingsUpdate(baseFolder) {
         for (let m = 0; m < divs.length; m++) {
           const divGames = [];
           for (let n = 0; n < schedule.length; n++) {
-            const isSameDiv = (schedule[n].conf + ' ' + schedule[n].division1) === (divs[m].conf + ' ' + divs[m].div);
+            const targetDiv = (divs[m].conf + ' ' + divs[m].div);
+            const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
+            const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
+            const isSameDiv = gameDiv1 === targetDiv || gameDiv2 === targetDiv;
             const gameWeek = Number(schedule[n].week);
             const isWeek = gameWeek === week || gameWeek === week + 1;
             if (isSameDiv && isWeek) 
               divGames.push(schedule[n]);
           }
-          if (divGames.length !== 0) activeDivs.push(divGames);
+          if (divGames.length !== 0) {
+            // Keep the selected division context explicit so cross-division games
+            // don't get re-labeled to whichever team appears in division1 first.
+            activeDivs.push([{ conf: divs[m].conf, division1: divs[m].div }, ...divGames]);
+          }
         }
       } else {
         const divGames = [];
+        const selectedDivMeta = divs.find((d) => (d.conf + ' ' + d.div) === userDiv);
         for (let n = 0; n < schedule.length; n++) {
-          const isSameDiv = (schedule[n].conf + ' ' + schedule[n].division1) === userDiv;
+          const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
+          const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
+          const isSameDiv = gameDiv1 === userDiv || gameDiv2 === userDiv;
           const gameWeek = Number(schedule[n].week);
           const isWeek = gameWeek === week || gameWeek === week + 1;
           if (isSameDiv && isWeek) 
             divGames.push(schedule[n]);
         }
-        if (divGames.length !== 0) activeDivs.push(divGames);
+        if (divGames.length !== 0) {
+          const conf = selectedDivMeta ? selectedDivMeta.conf : String(userDiv).split(' ')[0] || '';
+          const division1 = selectedDivMeta ? selectedDivMeta.div : String(userDiv).replace(`${conf} `, '');
+          activeDivs.push([{ conf, division1 }, ...divGames]);
+        }
       }
     }
 
@@ -160,9 +174,10 @@ async function handleStandingsUpdate(baseFolder) {
       let hasPlayoffGames = false;
       for (let i = 0; i < schedule.length; i++) {
         const game = schedule[i];
-        const gameConfDiv = game.conf + ' ' + game.division1;
+        const gameConfDiv1 = game.conf + ' ' + game.division1;
+        const gameConfDiv2 = game.conf + ' ' + game.division2;
         const gameWeek = Number(game.week);
-        if (gameConfDiv === confDiv && game.gameType === 'Playoffs' && (gameWeek === week || gameWeek === week + 1)) {
+        if ((gameConfDiv1 === confDiv || gameConfDiv2 === confDiv) && game.gameType === 'Playoffs' && (gameWeek === week || gameWeek === week + 1)) {
           hasPlayoffGames = true;
           break;
         }
@@ -212,9 +227,10 @@ async function handleStandingsUpdate(baseFolder) {
       if (!runAllDivs) {
         for (let i = 0; i < schedule.length; i++) {
           const game = schedule[i];
-          const gameConfDiv = game.conf + ' ' + game.division1;
+          const gameConfDiv1 = game.conf + ' ' + game.division1;
+          const gameConfDiv2 = game.conf + ' ' + game.division2;
           const gameWeek = Number(game.week);
-          if (gameConfDiv === confDiv && game.gameType !== 'Playoffs' && gameWeek === week) {
+          if ((gameConfDiv1 === confDiv || gameConfDiv2 === confDiv) && game.gameType !== 'Playoffs' && gameWeek === week) {
             hasRegularSeasonGames = true;
             break;
           }

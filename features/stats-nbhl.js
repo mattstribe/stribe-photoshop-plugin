@@ -85,7 +85,10 @@ async function handleStatsUpdate(baseFolder) {
           const regularGames = [];
           const playoffGames = [];
           for (let n = 0; n < schedule.length; n++) {
-            const isSameDiv = (schedule[n].conf + ' ' + schedule[n].division1) === (divs[m].conf + ' ' + divs[m].div);
+            const targetDiv = (divs[m].conf + ' ' + divs[m].div);
+            const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
+            const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
+            const isSameDiv = gameDiv1 === targetDiv || gameDiv2 === targetDiv;
             const gameWeek = Number(schedule[n].week);
             const isWeek = gameWeek === week
             if (isSameDiv && isWeek) {
@@ -96,14 +99,21 @@ async function handleStatsUpdate(baseFolder) {
               }
             }
           }
-          if (regularGames.length !== 0) activeRegularDivs.push(regularGames);
-          if (playoffGames.length !== 0) activePlayoffDivs.push(playoffGames);
+          if (regularGames.length !== 0) {
+            activeRegularDivs.push([{ conf: divs[m].conf, division1: divs[m].div, gameType: 'Regular Season' }, ...regularGames]);
+          }
+          if (playoffGames.length !== 0) {
+            activePlayoffDivs.push([{ conf: divs[m].conf, division1: divs[m].div, gameType: 'Playoffs' }, ...playoffGames]);
+          }
         }
       } else {
         const regularGames = [];
         const playoffGames = [];
+        const selectedDivMeta = divs.find((d) => (d.conf + ' ' + d.div) === userDiv);
         for (let n = 0; n < schedule.length; n++) {
-          const isSameDiv = (schedule[n].conf + ' ' + schedule[n].division1) === userDiv;
+          const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
+          const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
+          const isSameDiv = gameDiv1 === userDiv || gameDiv2 === userDiv;
           const gameWeek = Number(schedule[n].week);
           const isWeek = gameWeek === week
           if (isSameDiv && isWeek) {
@@ -114,8 +124,10 @@ async function handleStatsUpdate(baseFolder) {
             }
           }
         }
-        if (regularGames.length !== 0) activeRegularDivs.push(regularGames);
-        if (playoffGames.length !== 0) activePlayoffDivs.push(playoffGames);
+        const conf = selectedDivMeta ? selectedDivMeta.conf : String(userDiv).split(' ')[0] || '';
+        const division1 = selectedDivMeta ? selectedDivMeta.div : String(userDiv).replace(`${conf} `, '');
+        if (regularGames.length !== 0) activeRegularDivs.push([{ conf, division1, gameType: 'Regular Season' }, ...regularGames]);
+        if (playoffGames.length !== 0) activePlayoffDivs.push([{ conf, division1, gameType: 'Playoffs' }, ...playoffGames]);
       }
     }
     
