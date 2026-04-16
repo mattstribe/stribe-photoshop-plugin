@@ -245,7 +245,8 @@ async function loadDivisionInfo(baseFolder) {
         color2:  normalizeColor(getValue(row, 'Color 2', headerMap)),
         timeZone: getValue(row, 'Time Zone', headerMap),
         location: getValue(row, 'Location', headerMap),
-        divShort: getValue(row, 'DivShort', headerMap)
+        divShort: getValue(row, 'DivShort', headerMap),
+        minGpGaa: Number(getValue(row, 'Min GP (GAA)', headerMap) || 0)
       };
       if (!divObject.conf && !divObject.div) continue;
       divs.push(divObject);
@@ -419,6 +420,12 @@ async function _loadGoalieStatsInternal(baseFolder, sheetName, label) {
         GA: getValue(row, 'GA', headerMap),
         GAA: getValue(row, 'GAA', headerMap),
         GP: getValue(row, 'GP', headerMap),
+        wins: Number(
+          getValue(row, 'Wins', headerMap) ||
+          getValue(row, 'WINS', headerMap) ||
+          getValue(row, 'W', headerMap) ||
+          0
+        ),
       }
       goalieStatline.fullName = goalieStatline.firstName + ' ' + goalieStatline.lastName
 

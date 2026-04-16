@@ -173,10 +173,15 @@ async function handleStatsUpdate(baseFolder) {
       //convert division to abbreviations and tier
       let divAbb = null;
       let conf = null;
+      let minGpGaaRatio = 0.44;
       for (let i=0; i < divs.length; i++){
           if (confDiv === divs[i].conf + " " + divs[i].div){
               divAbb = divs[i].abb
               conf = divs[i].conf
+              const configuredRatio = Number(divs[i].minGpGaa);
+              if (Number.isFinite(configuredRatio) && configuredRatio > 0) {
+                  minGpGaaRatio = configuredRatio;
+              }
               break;
           }
       }
@@ -245,7 +250,12 @@ async function handleStatsUpdate(baseFolder) {
 
       for (let m=0; m<3; m++){ //for each goal slot
           for (let n=0; n<divPlayerStats.length; n++){ //cycle through all players and replace goal slot with highest scorer
-              if (Number(divPlayerStats[n].goals) > Number(topGoals[m].goals)){
+              const goalsGreater = Number(divPlayerStats[n].goals) > Number(topGoals[m].goals);
+              const goalsEqual = Number(divPlayerStats[n].goals) === Number(topGoals[m].goals);
+              const currentGp = Number(divPlayerStats[n].GP ?? divPlayerStats[n].gp ?? 999);
+              const topGp = Number(topGoals[m].GP ?? topGoals[m].gp ?? 999);
+              const gpBetter = currentGp < topGp;
+              if (goalsGreater || (goalsEqual && gpBetter)){
                   if (m===0){
                       topGoals[m] = divPlayerStats[n]
                   }
@@ -291,7 +301,7 @@ async function handleStatsUpdate(baseFolder) {
               GPmax = Number(divGoalieStats[n].GP)
           
       }
-      const GPmin = Math.round(0.44*GPmax)
+      const GPmin = Math.round(minGpGaaRatio*GPmax)
 
       //define null goalie
       const nullGoalie = {
@@ -301,7 +311,8 @@ async function handleStatsUpdate(baseFolder) {
           div: null,
           GA: 99,
           GAA: 99,
-          GP: 0
+          GP: 0,
+          wins: 0
       }
 
       //then set up top GAA based on min games played
@@ -309,7 +320,10 @@ async function handleStatsUpdate(baseFolder) {
 
       for (let m=0; m<3; m++){ //for each GAA slot
           for (let n=0; n<divGoalieStats.length; n++){ //cycle through all goalies in div
-              if (Number(divGoalieStats[n].GAA) < Number(topGAA[m].GAA) && Number(divGoalieStats[n].GP) >= GPmin){
+              const gaaLower = Number(divGoalieStats[n].GAA) < Number(topGAA[m].GAA);
+              const gaaEqual = Number(divGoalieStats[n].GAA) === Number(topGAA[m].GAA);
+              const winsGreater = Number(divGoalieStats[n].wins || 0) > Number(topGAA[m].wins || 0);
+              if ((gaaLower || (gaaEqual && winsGreater)) && Number(divGoalieStats[n].GP) >= GPmin){
                   if (m===0){
                       topGAA[m] = divGoalieStats[n]
                   }
