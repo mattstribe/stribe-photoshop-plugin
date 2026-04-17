@@ -178,30 +178,48 @@ async function handleStandingsUpdate(baseFolder) {
       const templateFolder = await gamedayFolder.getEntry(DOC_ID);
 
       // If division has playoff games (current or next week), run bracket.js
-      // This can run in addition to standings if division also has regular season games
+      // This can run in addition to standings if division also has regular season games.
+      // If no BRACKET template exists yet, skip bracket generation gracefully.
       if (hasPlayoffGames) {
-        const divisionData = {
-          confDiv,
-          division,
-          divTeams,
-          divAbb,
-          conf,
-          confLocation,
-          divColorHex,
-          schedule,
-          week,
-          divs,
-          confs,
-          teams,
-          previousDocId,
-          userDiv,
-          cloudExportEnabled,
-          gamedayFolder,
-          templateFolder
-        };
-        const newDocId = await bracketHandler.handleBracketUpdate(baseFolder, divisionData);
-        if (userDiv === 'ALL') {
-          previousDocId = newDocId;
+        let hasBracketTemplate = false;
+        try {
+          await templateFolder.getEntry(`${divAbb}_BRACKET.psd`);
+          hasBracketTemplate = true;
+        } catch {
+          try {
+            await templateFolder.getEntry('BRACKET.psd');
+            hasBracketTemplate = true;
+          } catch {
+            hasBracketTemplate = false;
+          }
+        }
+
+        if (!hasBracketTemplate) {
+          console.log(`Skipping BRACKET for ${divAbb}: no BRACKET template found.`);
+        } else {
+          const divisionData = {
+            confDiv,
+            division,
+            divTeams,
+            divAbb,
+            conf,
+            confLocation,
+            divColorHex,
+            schedule,
+            week,
+            divs,
+            confs,
+            teams,
+            previousDocId,
+            userDiv,
+            cloudExportEnabled,
+            gamedayFolder,
+            templateFolder
+          };
+          const newDocId = await bracketHandler.handleBracketUpdate(baseFolder, divisionData);
+          if (userDiv === 'ALL') {
+            previousDocId = newDocId;
+          }
         }
         // Continue to also process standings if division has regular season games
       }
