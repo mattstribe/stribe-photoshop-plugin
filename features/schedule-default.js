@@ -4,7 +4,6 @@ const core = photoshop.core;
 const leagueConfig = require("../leagueConfig_200.js");
 const imageHandler = require("../utils/imageHandler.js");
 const exportHandler = require("../utils/exportHandler.js");
-const fs = require("uxp").storage.localFileSystem;
 
 // Helper
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -313,10 +312,8 @@ async function handleScheduleUpdate(baseFolder) {
                 const score2 = finalFolder ? getByName(finalFolder, 'SCORE 2') : null;
                 const finalText = finalFolder ? getByName(finalFolder, 'FINAL') : null;
 
-                // Determine division + abb for logos path
+                // Row division label (game host — unchanged)
                 const divAbb = finalGames[i].div1;
-                const team1DivAbb = divAbb;
-                const team2DivAbb = finalGames[i].div2 || divAbb;
                 const division = finalGames[i].division1;
                 // Find short division label if available
                 let divisionShort = null;
@@ -336,15 +333,19 @@ async function handleScheduleUpdate(baseFolder) {
                   if (finalFolder) finalFolder.visible = false;
                 }
 
-                // Team 1
+                // Team 1 — color + logo paths from roster (team's conf + division abb), not the game's host conf/div only
                 let t1Color = '4a4a4a';
                 let t1Name = finalGames[i].team1;
                 let t1Found = false;
+                let t1LogoConf = conf;
+                let t1LogoAbb = finalGames[i].div1;
                 for (let c = 0; c < teams.length; c++) {
                   if (teams[c].fullTeam === finalGames[i].team1) {
                     t1Color = teams[c].color1;
                     t1Name = teams[c].teamName;
                     t1Full = teams[c].fullTeam;
+                    t1LogoConf = teams[c].conf || conf;
+                    t1LogoAbb = teams[c].abb || finalGames[i].div1;
                     t1Found = true;
                     break;
                   }
@@ -354,15 +355,19 @@ async function handleScheduleUpdate(baseFolder) {
                   t1Name = 'TBD';
                 }
 
-                // Team 2
+                // Team 2 — same (roster conf/abb); if not on roster, fall back to game div2 / div1
                 let t2Color = '4a4a4a';
                 let t2Name = finalGames[i].team2;
                 let t2Found = false;
+                let t2LogoConf = conf;
+                let t2LogoAbb = finalGames[i].div2 || finalGames[i].div1;
                 for (let c = 0; c < teams.length; c++) {
                   if (teams[c].fullTeam === finalGames[i].team2) {
                     t2Color = teams[c].color1;
                     t2Name = teams[c].teamName;
                     t2Full = teams[c].fullTeam;
+                    t2LogoConf = teams[c].conf || conf;
+                    t2LogoAbb = teams[c].abb || (finalGames[i].div2 || finalGames[i].div1);
                     t2Found = true;
                     break;
                   }
@@ -394,20 +399,20 @@ async function handleScheduleUpdate(baseFolder) {
                 team1nameText.textItem.contents = team1DisplayName.length > 20 ? (team1DisplayName.slice(0, 20) + '...') : team1DisplayName;
                 team2nameText.textItem.contents = team2DisplayName.length > 20 ? (team2DisplayName.slice(0, 20) + '...') : team2DisplayName;
 
-                // Logos with fallback to LeagueLogo.png
+                // Logos with fallback to LeagueLogo.png (CDN + disk paths use each team's roster conf / div abb)
                 if (t1Found) {
-                  const logo1Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(team1DivAbb)}/${encodeURIComponent(t1Full)}.png`;
+                  const logo1Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(t1LogoConf)}/${encodeURIComponent(t1LogoAbb)}/${encodeURIComponent(t1Full)}.png`;
                   let ok1 = await imageHandler.replaceLayerWithImage(logo1, logo1Url);
-                  if (!ok1) ok1 = await imageHandler.replaceLayerWithImage(logo1, `LOGOS/TEAMS/${conf}/${team1DivAbb}/${t1Full}.png`, baseFolder);
+                  if (!ok1) ok1 = await imageHandler.replaceLayerWithImage(logo1, `LOGOS/TEAMS/${t1LogoConf}/${t1LogoAbb}/${t1Full}.png`, baseFolder);
                   if (!ok1) await imageHandler.replaceLayerWithImage(logo1, "LOGOS/LeagueLogo.png", baseFolder);
                 } else {
                   await imageHandler.replaceLayerWithImage(logo1, "LOGOS/LeagueLogo.png", baseFolder);
                 }
 
                 if (t2Found) {
-                  const logo2Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(team2DivAbb)}/${encodeURIComponent(t2Full)}.png`;
+                  const logo2Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(t2LogoConf)}/${encodeURIComponent(t2LogoAbb)}/${encodeURIComponent(t2Full)}.png`;
                   let ok2 = await imageHandler.replaceLayerWithImage(logo2, logo2Url);
-                  if (!ok2) ok2 = await imageHandler.replaceLayerWithImage(logo2, `LOGOS/TEAMS/${conf}/${team2DivAbb}/${t2Full}.png`, baseFolder);
+                  if (!ok2) ok2 = await imageHandler.replaceLayerWithImage(logo2, `LOGOS/TEAMS/${t2LogoConf}/${t2LogoAbb}/${t2Full}.png`, baseFolder);
                   if (!ok2) await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
                 } else {
                   await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
