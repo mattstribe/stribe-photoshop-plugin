@@ -85,7 +85,10 @@ async function handleStatsUpdate(baseFolder) {
           const regularGames = [];
           const playoffGames = [];
           for (let n = 0; n < schedule.length; n++) {
-            const isSameDiv = (schedule[n].conf + ' ' + schedule[n].division1) === (divs[m].conf + ' ' + divs[m].div);
+            const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
+            const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
+            const targetDiv = (divs[m].conf + ' ' + divs[m].div);
+            const isSameDiv = gameDiv1 === targetDiv || gameDiv2 === targetDiv;
             const gameWeek = Number(schedule[n].week);
             const isWeek = gameWeek === week || gameWeek === week + 1; // Include next week for playoffs
             if (isSameDiv && isWeek) {
@@ -96,14 +99,16 @@ async function handleStatsUpdate(baseFolder) {
               }
             }
           }
-          if (regularGames.length !== 0) activeRegularDivs.push(regularGames);
-          if (playoffGames.length !== 0) activePlayoffDivs.push(playoffGames);
+          if (regularGames.length !== 0) activeRegularDivs.push([{ conf: divs[m].conf, division1: divs[m].div }, ...regularGames]);
+          if (playoffGames.length !== 0) activePlayoffDivs.push([{ conf: divs[m].conf, division1: divs[m].div }, ...playoffGames]);
         }
       } else {
         const regularGames = [];
         const playoffGames = [];
         for (let n = 0; n < schedule.length; n++) {
-          const isSameDiv = (schedule[n].conf + ' ' + schedule[n].division1) === userDiv;
+          const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
+          const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
+          const isSameDiv = gameDiv1 === userDiv || gameDiv2 === userDiv;
           const gameWeek = Number(schedule[n].week);
           const isWeek = gameWeek === week || gameWeek === week + 1; // Include next week for playoffs
           if (isSameDiv && isWeek) {

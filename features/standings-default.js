@@ -82,9 +82,9 @@ async function handleStandingsUpdate(baseFolder) {
         for (let m = 0; m < divs.length; m++) {
           const divGames = [];
           for (let n = 0; n < schedule.length; n++) {
-            const targetDiv = (divs[m].conf + ' ' + divs[m].div);
             const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
             const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
+            const targetDiv = (divs[m].conf + ' ' + divs[m].div);
             const isSameDiv = gameDiv1 === targetDiv || gameDiv2 === targetDiv;
             const gameWeek = Number(schedule[n].week);
             const isWeek = gameWeek === week || gameWeek === week + 1;

@@ -116,7 +116,7 @@ async function handleTeamsUpdate(baseFolder) {
         // Default these doc-level labels to white for non-Legends teams.
         setTextHex(divisionLayer, "ffffff");
         setTextHex(tierTextLayer, "ffffff");
-        if (teamTier === "LEGENDS") {
+        if (teamTier === "LEGENDS TIER") {
           setTextHex(divisionLayer, "252525");
           setTextHex(tierTextLayer, "252525");
         }
