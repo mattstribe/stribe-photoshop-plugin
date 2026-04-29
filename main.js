@@ -87,6 +87,13 @@ document.getElementById("btnTeamsUpdate").addEventListener("click", async () => 
   await teamsUpdateModule.handleTeamsUpdate(baseFolder);
 });
 
+document.getElementById("btnPowerRankings").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const powerRankingsModule = require("./features/power-rankings.js");
+  await powerRankingsModule.handlePowerRankingsUpdate(baseFolder);
+});
+
 // Division
 document.getElementById("divisionInput").addEventListener("input", ui.updateDivisionDisplay);
 
