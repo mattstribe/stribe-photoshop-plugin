@@ -31,7 +31,8 @@ async function handlePowerRankingsUpdate(baseFolder) {
 
     const tierPlans = tierNames.map((tierName) => ({
       tierName,
-      rankedTeams: buildRankedTierTeams(teams, tierName)
+      rankedTeams: buildRankedTierTeams(teams, tierName),
+      totalTeamsInTier: countTeamsInTier(teams, tierName)
     }));
     const nonEmptyTierPlans = tierPlans.filter((p) => p.rankedTeams.length > 0);
 
@@ -51,6 +52,7 @@ async function handlePowerRankingsUpdate(baseFolder) {
     for (let i = 0; i < nonEmptyTierPlans.length; i++) {
       const tierName = nonEmptyTierPlans[i].tierName;
       const rankedTeams = nonEmptyTierPlans[i].rankedTeams;
+      const totalTeamsInTier = nonEmptyTierPlans[i].totalTeamsInTier;
       statusEl.textContent = `POWER-RANKINGS: ${tierName} (${i + 1}/${nonEmptyTierPlans.length})...`;
 
       for (let t = 0; t < templateFiles.length; t++) {
@@ -59,35 +61,64 @@ async function handlePowerRankingsUpdate(baseFolder) {
         await core.executeAsModal(async () => {
           await app.open(templateFile);
           const doc = app.activeDocument;
-          const outputBaseName = `${String(templateFile.name || "").replace(/\.psd$/i, "")}_${sanitizeFilename(tierName)}`;
-
-          const outputFile = await outputFolder.createFile(
-            `${outputBaseName}.psd`,
-            { overwrite: true }
-          );
-          if (doc.saveAs && doc.saveAs.psd) await doc.saveAs.psd(outputFile);
+          const isSideBarTemplate = /SIDE-BAR/i.test(String(templateFile.name || ""));
+          const outputPrefix = getTemplateExportPrefix(templateFile.name);
+          const outputBaseName = `${outputPrefix}_${sanitizeFilename(tierName)}`;
 
           const header = getByName(doc, "HEADER");
           const tierFolder = header ? getByName(header, "TIER") : null;
           applyTierVisibility(tierFolder, tierName);
-          if (!/SIDE-BAR/i.test(String(templateFile.name || ""))) {
-            updateOutOfTeamsText(header, rankedTeams.length);
+          if (!isSideBarTemplate) {
+            updateOutOfTeamsText(header, totalTeamsInTier);
           }
 
           const topTen = rankedTeams.slice(0, 10);
           const overflow = rankedTeams.slice(10);
+          const shouldShiftTenTeam = rankedTeams.length <= 5 && !isSideBarTemplate;
 
           const tenTeamFolder = getByName(doc, "10 team");
           const fifteenTeamFolder = getByName(doc, "15 team");
-          if (tenTeamFolder && rankedTeams.length <= 5) {
-            await translate(tenTeamFolder, 400, 0);
-          }
 
+          // Keep exactly one PSD per tier/template in full state.
+          if (tenTeamFolder && shouldShiftTenTeam) {
+            await translate(tenTeamFolder, 200, 0);
+          }
           await updateTeamSlots(tenTeamFolder, topTen, divAbbByConfDiv, baseFolder);
           await updateTeamSlots(fifteenTeamFolder, overflow, divAbbByConfDiv, baseFolder);
+          if (tenTeamFolder) tenTeamFolder.visible = topTen.length > 0;
+          if (fifteenTeamFolder) fifteenTeamFolder.visible = overflow.length > 0;
+          const tierPsdFile = await outputFolder.createFile(`${outputBaseName}.psd`, { overwrite: true });
+          if (doc.saveAs && doc.saveAs.psd) await doc.saveAs.psd(tierPsdFile);
 
-          const pngFile = await pngOutputFolder.createFile(`${outputBaseName}.png`, { overwrite: true });
-          await exportHandler.exportPng(doc, pngFile, null, cloudExportEnabled);
+          await applyTeamRange(doc, {
+            rangeSuffix: "1-10",
+            tenTeamFolder,
+            fifteenTeamFolder,
+            tenTeams: topTen,
+            fifteenTeams: [],
+            shiftTenTeamRight: shouldShiftTenTeam,
+            divAbbByConfDiv,
+            baseFolder,
+            pngOutputFolder,
+            outputBaseName,
+            cloudExportEnabled
+          });
+
+          if (overflow.length > 0) {
+            await applyTeamRange(doc, {
+              rangeSuffix: "11-25",
+              tenTeamFolder,
+              fifteenTeamFolder,
+              tenTeams: [],
+              fifteenTeams: overflow,
+              shiftTenTeamRight: false,
+              divAbbByConfDiv,
+              baseFolder,
+              pngOutputFolder,
+              outputBaseName,
+              cloudExportEnabled
+            });
+          }
 
           await doc.save();
           await doc.close();
@@ -132,6 +163,17 @@ function buildRankedTierTeams(teams, tierName) {
     });
 }
 
+function countTeamsInTier(teams, tierName) {
+  const targetTier = String(tierName || "").trim().toUpperCase();
+  let count = 0;
+  for (let i = 0; i < teams.length; i++) {
+    if (String(teams[i].conf || "").trim().toUpperCase() === targetTier) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 async function updateTeamSlots(parentFolder, rankedTeams, divAbbByConfDiv, baseFolder) {
   if (!parentFolder || !parentFolder.layers) return;
 
@@ -149,6 +191,39 @@ async function updateTeamSlots(parentFolder, rankedTeams, divAbbByConfDiv, baseF
     teamFolder.visible = true;
     await updateTeamFolder(teamFolder, team, divAbbByConfDiv, baseFolder, i + 1);
   }
+}
+
+async function applyTeamRange(doc, options) {
+  const {
+    rangeSuffix,
+    tenTeamFolder,
+    fifteenTeamFolder,
+    tenTeams,
+    fifteenTeams,
+    shiftTenTeamRight,
+    divAbbByConfDiv,
+    baseFolder,
+    pngOutputFolder,
+    outputBaseName,
+    cloudExportEnabled
+  } = options;
+
+  if (tenTeamFolder) tenTeamFolder.visible = true;
+  if (fifteenTeamFolder) fifteenTeamFolder.visible = true;
+
+  if (shiftTenTeamRight && tenTeamFolder) {
+    await translate(tenTeamFolder, 200, 0);
+  }
+
+  await updateTeamSlots(tenTeamFolder, tenTeams, divAbbByConfDiv, baseFolder);
+  await updateTeamSlots(fifteenTeamFolder, fifteenTeams, divAbbByConfDiv, baseFolder);
+
+  if (tenTeamFolder) tenTeamFolder.visible = tenTeams.length > 0;
+  if (fifteenTeamFolder) fifteenTeamFolder.visible = fifteenTeams.length > 0;
+
+  const rangedBaseName = `${outputBaseName}_${rangeSuffix}`;
+  const pngFile = await pngOutputFolder.createFile(`${rangedBaseName}.png`, { overwrite: true });
+  await exportHandler.exportPng(doc, pngFile, null, cloudExportEnabled);
 }
 
 async function updateTeamFolder(teamFolder, team, divAbbByConfDiv, baseFolder, rankNumber) {
@@ -286,8 +361,16 @@ function normalizeLabel(value) {
 function sanitizeFilename(name) {
   return String(name || "")
     .replace(/[\\/:*?"<>|]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim()
+    .replace(/^-+|-+$/g, "");
+}
+
+function getTemplateExportPrefix(templateFileName) {
+  const name = String(templateFileName || "").toUpperCase();
+  if (name.includes("SIDE-BAR")) return "PR-SB";
+  return "PR";
 }
 
 function getByName(parent, name) {
