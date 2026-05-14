@@ -213,10 +213,12 @@ async function handleStatsUpdate(baseFolder) {
           lastName: null,
           teamName: null,
           div: null,
+          gp: 0,
           goals: 0,
           assists: 0,
           points: 0,
           ppg: 0,
+          gpg: 0
       }
 
       //SET UP TOP POINT SCORERS
@@ -252,10 +254,10 @@ async function handleStatsUpdate(baseFolder) {
           for (let n=0; n<divPlayerStats.length; n++){ //cycle through all players and replace goal slot with highest scorer
               const goalsGreater = Number(divPlayerStats[n].goals) > Number(topGoals[m].goals);
               const goalsEqual = Number(divPlayerStats[n].goals) === Number(topGoals[m].goals);
-              const currentGp = Number(divPlayerStats[n].GP ?? divPlayerStats[n].gp ?? 999);
-              const topGp = Number(topGoals[m].GP ?? topGoals[m].gp ?? 999);
-              const gpBetter = currentGp < topGp;
-              if (goalsGreater || (goalsEqual && gpBetter)){
+              const currentGpg = Number(divPlayerStats[n].gpg ?? 0);
+              const topGpg = Number(topGoals[m].gpg ?? 0);
+              const gpgBetter = currentGpg > topGpg;
+              if (goalsGreater || (goalsEqual && gpgBetter)){
                   if (m===0){
                       topGoals[m] = divPlayerStats[n]
                   }

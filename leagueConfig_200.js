@@ -360,10 +360,12 @@ async function _loadPlayerStatsInternal(baseFolder, sheetName, label) {
         lastName: getValue(row, 'Last Name', headerMap),
         teamName: getValue(row, 'Team', headerMap),
         div: getValue(row, 'Division', headerMap),
+        gp: getValue(row, 'GP', headerMap),
         goals: Number(getValue(row, 'G', headerMap)),
         assists: Number(getValue(row, 'A', headerMap)),
         points: Number(getValue(row, 'PTS', headerMap)),
         ppg: getValue(row, 'PTS/GP', headerMap),
+        gpg: getValue(row, 'G/GP', headerMap)
       }
       playerStatline.fullName = playerStatline.firstName + ' ' + playerStatline.lastName
 
