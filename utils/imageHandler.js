@@ -39,6 +39,20 @@ async function replaceLayerWithImage(layer, pathOrUrl, baseFolder) {
   return replaceLayerWithFile(layer, fileEntry);
 }
 
+// Same as replaceLayerWithImage but replaces in-place to preserve clipping
+// masks and layer order. Use for layers inside clipping mask groups.
+async function replaceLayerWithImageInPlace(layer, pathOrUrl, baseFolder) {
+  if (!layer || !pathOrUrl || !String(pathOrUrl).trim()) return false;
+
+  const fileEntry = baseFolder != null
+    ? await getFileFromPath(baseFolder, pathOrUrl)
+    : await getFileFromUrl(pathOrUrl);
+
+  if (!fileEntry) return false;
+
+  return replaceLayerInPlace(layer, fileEntry);
+}
+
 // ---- Resolve image to a FileEntry (used by replaceLayerWithImage) ----
 
 async function getFileFromUrl(url) {
@@ -83,6 +97,9 @@ async function getFileFromPath(baseFolder, relativePath) {
 
 // ---- The actual Photoshop replace (needs a FileEntry) ----
 
+// Original approach: makes a copy, replaces its contents, then deletes the
+// original. Used by most scripts where layer order / clipping masks are not
+// a concern.
 async function replaceLayerWithFile(layer, fileEntry) {
   if (!layer || !fileEntry) return false;
   const originalId = layer._id;
@@ -95,6 +112,21 @@ async function replaceLayerWithFile(layer, fileEntry) {
   copied.name = originalName;
   await app.batchPlay([{ _obj: "placedLayerReplaceContents", _target: [{ _ref: "layer", _id: copied._id }], "null": { _path: token, _kind: "local" } }], { synchronousExecution: true });
   await app.batchPlay([{ _obj: "delete", _target: [{ _ref: "layer", _id: originalId }] }], { synchronousExecution: true });
+  return true;
+}
+
+// In-place approach: replaces the smart object content directly on the
+// existing layer. Preserves clipping masks, effects, and layer order.
+// Use this when the layer sits inside a clipping mask group.
+async function replaceLayerInPlace(layer, fileEntry) {
+  if (!layer || !fileEntry) return false;
+  const token = await fs.createSessionToken(fileEntry);
+  await app.batchPlay([{ _obj: "select", _target: [{ _ref: "layer", _id: layer._id }], makeVisible: true }], { synchronousExecution: true });
+  await app.batchPlay([{
+    _obj: "placedLayerReplaceContents",
+    _target: [{ _ref: "layer", _id: layer._id }],
+    "null": { _path: token, _kind: "local" }
+  }], { synchronousExecution: true });
   return true;
 }
 
@@ -114,5 +146,6 @@ async function clearCache() {
 module.exports = {
   IMAGE_CDN_BASE,
   replaceLayerWithImage,
+  replaceLayerWithImageInPlace,
   clearCache
 };

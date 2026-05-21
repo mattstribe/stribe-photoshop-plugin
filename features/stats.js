@@ -1,5 +1,6 @@
 const defaultStatsModule = require("./stats-default.js");
 const nbhlStatsModule = require("./stats-nbhl.js");
+const lugStatsModule = require("./stats-lug.js");
 
 function normalizeLeagueName(baseFolder) {
   return String(baseFolder?.name || "").trim().toUpperCase();
@@ -11,7 +12,8 @@ function getStatsHandler(baseFolder) {
   // Add future league-specific handlers here:
   // e.g. "XYZ": require("./stats-xyz.js")
   const leagueModules = {
-    NBHL: nbhlStatsModule
+    NBHL: nbhlStatsModule,
+    LUG: lugStatsModule
   };
 
   const selectedModule = leagueModules[leagueName] || defaultStatsModule;

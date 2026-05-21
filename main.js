@@ -94,6 +94,13 @@ document.getElementById("btnPowerRankings").addEventListener("click", async () =
   await powerRankingsModule.handlePowerRankingsUpdate(baseFolder);
 });
 
+document.getElementById("btnBracket").addEventListener("click", async () => {
+  await ui.initializeUI();
+  const baseFolder = await storage.getBaseFolder();
+  const bracketModule = require("./features/bracket.js");
+  await bracketModule.handleBracketUpdate(baseFolder);
+});
+
 // Division
 document.getElementById("divisionInput").addEventListener("input", ui.updateDivisionDisplay);
 

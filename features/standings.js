@@ -1,5 +1,6 @@
 const defaultStandingsModule = require("./standings-default.js");
 const nbhlStandingsModule = require("./standings-nbhl.js");
+const lugStandingsModule = require("./standings-lug.js");
 
 function normalizeLeagueName(baseFolder) {
   return String(baseFolder?.name || "").trim().toUpperCase();
@@ -11,7 +12,8 @@ function getStandingsHandler(baseFolder) {
   // Add future league-specific handlers here:
   // e.g. "XYZ": require("./standings-xyz.js")
   const leagueModules = {
-    NBHL: nbhlStandingsModule
+    NBHL: nbhlStandingsModule,
+    LUG: lugStandingsModule
   };
 
   const selectedModule = leagueModules[leagueName] || defaultStandingsModule;

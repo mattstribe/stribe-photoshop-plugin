@@ -1,5 +1,6 @@
 const defaultScheduleModule = require("./schedule-default.js");
 const nbhlScheduleModule = require("./schedule-nbhl.js");
+const lugScheduleModule = require("./schedule-lug.js");
 
 function normalizeLeagueName(baseFolder) {
   return String(baseFolder?.name || "").trim().toUpperCase();
@@ -11,7 +12,8 @@ function getScheduleHandler(baseFolder) {
   // Add future league-specific handlers here:
   // e.g. "XYZ": require("./schedule-xyz.js")
   const leagueModules = {
-    NBHL: nbhlScheduleModule
+    NBHL: nbhlScheduleModule,
+    LUG: lugScheduleModule
   };
 
   const selectedModule = leagueModules[leagueName] || defaultScheduleModule;

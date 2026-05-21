@@ -240,12 +240,10 @@ async function handleScheduleUpdate(baseFolder) {
 
               // Set header
               let headerTextValue;
-              if (docType === 'Final Scores') {
-                headerTextValue = 'FINAL SCORES';
-              } else if (gameType === 'Playoffs') {
-                headerTextValue = 'PLAYOFFS';
+              if (gameType === 'Playoffs') {
+                headerTextValue = docType === 'Final Scores' ? 'RESULTS' : 'SCHEDULE';
               } else {
-                headerTextValue = 'UPCOMING GAMES';
+                headerTextValue = docType === 'Final Scores' ? 'FINAL SCORES' : 'UPCOMING GAMES';
               }
               headerText.textItem.contents = headerTextValue;
               dateText.textItem.contents = String(dateValue).toUpperCase();
@@ -330,6 +328,7 @@ async function handleScheduleUpdate(baseFolder) {
                 if (!matchX) continue;
 
                 const roundText = getByName(matchX, 'ROUND');
+                const seriesText = getByName(matchX, 'SERIES');
 
                 // Team layers
                 const color1 = getByName(matchX, 'TEAM 1 COLOR');
@@ -338,6 +337,8 @@ async function handleScheduleUpdate(baseFolder) {
                 const logo2 = getByName(matchX, 'TEAM 2 LOGO');
                 const team1RankFolder = getByName(matchX, 'TEAM 1 RANK');
                 const team2RankFolder = getByName(matchX, 'TEAM 2 RANK');
+                const team1SeedFolder = getByName(matchX, 'TEAM 1 SEED');
+                const team2SeedFolder = getByName(matchX, 'TEAM 2 SEED');
 
                 // Time/final groups
                 const timeFolder = getByName(matchX, 'TIME');
@@ -419,24 +420,17 @@ async function handleScheduleUpdate(baseFolder) {
                 let team1DisplayName = String(t1Name).toUpperCase();
                 let team2DisplayName = String(t2Name).toUpperCase();
                 
-                if (finalGames[i].gameType === 'Playoffs') {
-                  const seed1 = finalGames[i].seed1;
-                  const seed2 = finalGames[i].seed2;
-                  if (seed1 !== undefined && seed1 !== null && seed1 !== '') {
-                    team1DisplayName = `#${seed1} ${team1DisplayName}`;
-                  }
-                  if (seed2 !== undefined && seed2 !== null && seed2 !== '') {
-                    team2DisplayName = `#${seed2} ${team2DisplayName}`;
-                  }
-                }
-                
                 team1nameText.textItem.contents = team1DisplayName.length > 20 ? (team1DisplayName.slice(0, 20) + '...') : team1DisplayName;
                 team2nameText.textItem.contents = team2DisplayName.length > 20 ? (team2DisplayName.slice(0, 20) + '...') : team2DisplayName;
 
-                // Power rank badges (if PR exists): show folder, set rank text, and
-                // show only the tier layer matching the team tier.
-                applyTeamRankFolder(team1RankFolder, t1PowerRanking, t1Tier || conf);
-                applyTeamRankFolder(team2RankFolder, t2PowerRanking, t2Tier || conf);
+                // Seed badges (playoffs) or power rank badges (regular season)
+                if (finalGames[i].gameType === 'Playoffs') {
+                  applyTeamSeedFolder(team1SeedFolder, finalGames[i].seed1);
+                  applyTeamSeedFolder(team2SeedFolder, finalGames[i].seed2);
+                } else {
+                  applyTeamRankFolder(team1RankFolder, t1PowerRanking, t1Tier || conf);
+                  applyTeamRankFolder(team2RankFolder, t2PowerRanking, t2Tier || conf);
+                }
 
                 // Text color from background luminance
                 setTextColor(team1nameText, t1Color);
@@ -461,9 +455,10 @@ async function handleScheduleUpdate(baseFolder) {
                   await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
                 }
 
-                // Round label – only for Playoffs
-                if (finalGames[i].gameType === 'Playoffs' && roundText) {
-                  roundText.textItem.contents = String(finalGames[i].round || '').toUpperCase();
+                // Round + Series labels – only for Playoffs
+                if (finalGames[i].gameType === 'Playoffs') {
+                  if (roundText) roundText.textItem.contents = String(finalGames[i].round || '').toUpperCase();
+                  if (seriesText) seriesText.textItem.contents = String(finalGames[i].series || '').toUpperCase();
                 }
 
                 // Time/Final values
@@ -667,6 +662,18 @@ function applyTeamRankFolder(rankFolder, powerRanking, tierName) {
     if (!layer) continue;
     if (String(layer.name).toUpperCase() === 'RANK') continue;
     layer.visible = targetTier !== '' && String(layer.name || '').trim().toUpperCase() === targetTier;
+  }
+}
+
+function applyTeamSeedFolder(seedFolder, seedValue) {
+  if (!seedFolder) return;
+  const hasSeed = String(seedValue ?? '').trim() !== '';
+  seedFolder.visible = hasSeed;
+  if (!hasSeed) return;
+  const seedTextLayer = getByName(seedFolder, 'SEED');
+  if (seedTextLayer && seedTextLayer.textItem) {
+    seedTextLayer.textItem.contents = String(seedValue).trim();
+    seedTextLayer.visible = true;
   }
 }
 

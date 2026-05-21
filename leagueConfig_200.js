@@ -92,6 +92,7 @@ async function getLeagueCsvUrls(baseFolder) {
   let haveADayPlayerUrl = "";
   let haveADayGoalieUrl = "";
   let topPlaysUrl = "";
+  let bracketUrl = "";
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -109,6 +110,7 @@ async function getLeagueCsvUrls(baseFolder) {
       haveADayPlayerUrl = String(getValue(row, "HAVE A DAY PLAYER", headerMap) || "").trim();
       haveADayGoalieUrl = String(getValue(row, "HAVE A DAY GOALIE", headerMap) || "").trim();
       topPlaysUrl = String(getValue(row, "TOP PLAYS", headerMap) || "").trim();
+      bracketUrl = String(getValue(row, "BRACKET", headerMap) || "").trim();
       break;
     }
   }
@@ -117,7 +119,7 @@ async function getLeagueCsvUrls(baseFolder) {
     throw new Error(`League "${leagueName}" not found or URLs missing in master league sheet.`);
   }
 
-  const urls = { divisionUrl, teamUrl, scheduleUrl, standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl, haveADayPlayerUrl, haveADayGoalieUrl, topPlaysUrl };
+  const urls = { divisionUrl, teamUrl, scheduleUrl, standingsUrl, goalieUrl, playerUrl, playoffGoalieUrl, playoffPlayerUrl, haveADayPlayerUrl, haveADayGoalieUrl, topPlaysUrl, bracketUrl };
   leagueUrlCache[leagueName] = urls;
   return urls;
 }
@@ -358,6 +360,7 @@ async function _loadPlayerStatsInternal(baseFolder, sheetName, label) {
       const playerStatline = {
         firstName: getValue(row, 'First Name', headerMap),
         lastName: getValue(row, 'Last Name', headerMap),
+        fullName: getValue(row, 'Full Name', headerMap),
         teamName: getValue(row, 'Team', headerMap),
         div: getValue(row, 'Division', headerMap),
         gp: getValue(row, 'GP', headerMap),
@@ -367,7 +370,9 @@ async function _loadPlayerStatsInternal(baseFolder, sheetName, label) {
         ppg: getValue(row, 'PTS/GP', headerMap),
         gpg: getValue(row, 'G/GP', headerMap)
       }
-      playerStatline.fullName = playerStatline.firstName + ' ' + playerStatline.lastName
+      if (!String(playerStatline.fullName || '').trim()) {
+        playerStatline.fullName = playerStatline.firstName + ' ' + playerStatline.lastName;
+      }
 
       if (!playerStatline.teamName) continue
       
@@ -376,7 +381,7 @@ async function _loadPlayerStatsInternal(baseFolder, sheetName, label) {
     console.log(`✅ Built ${allPlayerStats.length} ${label} stat objects`);
     return allPlayerStats;
   } catch (error) {
-    console.error(`Error loading ${label} stats:`, error);
+    console.warn(`⚠️ Could not load ${label} stats (sheet may not exist):`, error.message || error);
     return [];
   }
 }
@@ -417,6 +422,7 @@ async function _loadGoalieStatsInternal(baseFolder, sheetName, label) {
       const goalieStatline = {
         firstName: getValue(row, 'First Name', headerMap),
         lastName: getValue(row, 'Last Name', headerMap),
+        fullName: getValue(row, 'Full Name', headerMap),
         teamName: getValue(row, 'Team', headerMap),
         div: getValue(row, 'Division', headerMap),
         GA: getValue(row, 'GA', headerMap),
@@ -429,7 +435,9 @@ async function _loadGoalieStatsInternal(baseFolder, sheetName, label) {
           0
         ),
       }
-      goalieStatline.fullName = goalieStatline.firstName + ' ' + goalieStatline.lastName
+      if (!String(goalieStatline.fullName || '').trim()) {
+        goalieStatline.fullName = goalieStatline.firstName + ' ' + goalieStatline.lastName;
+      }
 
       // Filter out placeholder entries like "Backup Goalie"
       const fullNameNormalized = String(goalieStatline.fullName || '').trim().toLowerCase();
@@ -442,7 +450,7 @@ async function _loadGoalieStatsInternal(baseFolder, sheetName, label) {
     console.log(`✅ Built ${allGoalieStats.length} ${label} stat objects`);
     return allGoalieStats;
   } catch (error) {
-    console.error(`Error loading ${label} stats:`, error);
+    console.warn(`⚠️ Could not load ${label} stats (sheet may not exist):`, error.message || error);
     return [];
   }
 }
@@ -511,6 +519,55 @@ async function loadStandings(baseFolder) {
     
   } catch (error) {
     console.error("Error loading standings:", error);
+    return [];
+  }
+}
+
+/**
+ * Convenience helper for the BRACKET sheet URL
+ */
+async function getBracketSheet(baseFolder) {
+  const { bracketUrl } = await getLeagueCsvUrls(baseFolder);
+  if (!bracketUrl) throw new Error("No BRACKET URL configured for this league.");
+  const csvText = await fetchText(bracketUrl);
+  return parseCSV(csvText);
+}
+
+/**
+ * Load bracket matchup data from the "BRACKET" sheet.
+ * Columns: DIVISION, SLOT, TEAM 1, TEAM 2, SEED 1, SEED 2, SERIES
+ */
+async function loadBracket(baseFolder) {
+  try {
+    const rows = await getBracketSheet(baseFolder);
+    if (!rows || rows.length === 0) return [];
+
+    const headerMap = createHeaderMap(rows[0]);
+    const results = [];
+
+    for (let n = 1; n < rows.length; n++) {
+      const row = rows[n];
+      if (!row || row.length === 0) continue;
+      const division = String(getValue(row, 'DIVISION', headerMap) || '').trim();
+      const slot     = String(getValue(row, 'SLOT',     headerMap) || '').trim();
+      if (!division || !slot) continue;
+      results.push({
+        division,
+        slot,
+        team1:  String(getValue(row, 'TEAM 1',  headerMap) || '').trim(),
+        team2:  String(getValue(row, 'TEAM 2',  headerMap) || '').trim(),
+        seed1:  String(getValue(row, 'SEED 1',  headerMap) || '').trim(),
+        seed2:  String(getValue(row, 'SEED 2',  headerMap) || '').trim(),
+        w1:     Number(getValue(row, 'W1',      headerMap)) || 0,
+        w2:     Number(getValue(row, 'W2',      headerMap)) || 0,
+        bestOf: Number(getValue(row, 'BEST OF', headerMap)) || 1,
+      });
+    }
+
+    console.log(`✅ Loaded ${results.length} bracket rows`);
+    return results;
+  } catch (error) {
+    console.warn('⚠️ Could not load bracket data (sheet may not exist):', error.message || error);
     return [];
   }
 }
@@ -821,6 +878,7 @@ async function loadSchedule(baseFolder) {
         seed1: getValue(row, 'Seed 1', headerMap),
         seed2: getValue(row, 'Seed 2', headerMap),
         round: getValue(row, 'Round', headerMap),
+        series: getValue(row, 'Series', headerMap)
       };
 
       schedule.push(game);
@@ -902,9 +960,16 @@ function normalizeDivName(rawValue, divs) {
   if (!rawValue || !divs || !divs.length) return rawValue;
   // Already canonical?
   if (divs.some(d => d.conf + ' ' + d.div === rawValue)) return rawValue;
-  // Try reversed order
-  const match = divs.find(d => d.div + ' ' + d.conf === rawValue);
-  return match ? match.conf + ' ' + match.div : rawValue;
+  // Try reversed order (div + conf)
+  const reversedMatch = divs.find(d => d.div + ' ' + d.conf === rawValue);
+  if (reversedMatch) return reversedMatch.conf + ' ' + reversedMatch.div;
+  // Try abbreviation-only match
+  const abbMatch = divs.find(d => d.abb === rawValue);
+  if (abbMatch) return abbMatch.conf + ' ' + abbMatch.div;
+  // Try division-name-only match (leagues that omit the conference prefix)
+  const divOnlyMatch = divs.find(d => d.div === rawValue);
+  if (divOnlyMatch) return divOnlyMatch.conf + ' ' + divOnlyMatch.div;
+  return rawValue;
 }
 
 // Export functions
@@ -919,6 +984,7 @@ module.exports = {
   loadPlayoffPlayerStats,
   loadPlayoffGoalieStats,
   loadStandings,
+  loadBracket,
   loadHaveADayPlayers,
   loadHaveADayGoalies,
   loadTopPlays,

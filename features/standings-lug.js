@@ -4,6 +4,7 @@ const core = photoshop.core;
 const leagueConfig = require("../leagueConfig_200.js");
 const imageHandler = require("../utils/imageHandler.js");
 const exportHandler = require("../utils/exportHandler.js");
+const bracketHandler = require("./bracket.js");
 const fs = require("uxp").storage.localFileSystem;
 
 // Small delay helper (used when closing previous doc)
@@ -37,6 +38,8 @@ async function handleStandingsUpdate(baseFolder) {
 
     const { divs, confs, teams } = leagueData;
     const { schedule, week, year } = scheduleData;
+
+    console.log('[CSV] Standings data (' + standingsData.length + ' rows):', JSON.stringify(standingsData, null, 2));
 
     // Get user division input from UI (converts abbreviations automatically)
     const userDiv = leagueConfig.getUserDivision(divs);
@@ -160,11 +163,13 @@ async function handleStandingsUpdate(baseFolder) {
         }
       }
 
-      // Division color (per division, not overall conference)
-      let divColorHex = 'ffffff';
+      // Division colors (per division, not overall conference)
+      let divColor1Hex = 'ffffff';
+      let divColor2Hex = 'ffffff';
       for (let i = 0; i < divs.length; i++) {
         if (divs[i].abb === divAbb) {
-          divColorHex = String(divs[i].color1);
+          divColor1Hex = divs[i].color1 || 'ffffff';
+          divColor2Hex = divs[i].color2 || 'ffffff';
           break;
         }
       }
@@ -190,6 +195,36 @@ async function handleStandingsUpdate(baseFolder) {
         gamedayFolder = baseFolder;
       }
       const templateFolder = await gamedayFolder.getEntry(DOC_ID);
+
+      // If division has playoff games (current or next week), run bracket.js
+      // This can run in addition to standings if division also has regular season games
+      if (hasPlayoffGames) {
+        const divisionData = {
+          confDiv,
+          division,
+          divTeams,
+          divAbb,
+          conf,
+          confLocation,
+          divColor1Hex,
+          divColor2Hex,
+          schedule,
+          week,
+          divs,
+          confs,
+          teams,
+          previousDocId,
+          userDiv,
+          cloudExportEnabled,
+          gamedayFolder,
+          templateFolder
+        };
+        const newDocId = await bracketHandler.handleBracketUpdate(baseFolder, divisionData);
+        if (userDiv === 'ALL') {
+          previousDocId = newDocId;
+        }
+        // Continue to also process standings if division has regular season games
+      }
 
       // Check if this division has regular season games in current week
       // If allDivisionsCheckbox is checked, run standings for all divisions regardless
@@ -257,57 +292,41 @@ async function handleStandingsUpdate(baseFolder) {
           previousDocId = null;
         }
 
-        // Define document — header: DIVISION, TIER, EMBLEM, HEADER COLOR + sponsors (no HEADING/DATE in this template)
+        // Define document and header
         const doc = app.activeDocument;
         // Save As immediately to avoid editing/saving the template
         if (doc.saveAs && doc.saveAs.psd) await doc.saveAs.psd(saveFile);
         const header = getByName(doc, 'HEADER');
         const table = getByName(doc, 'TABLE');
         const background = getByName(doc, 'BACKGROUND');
-        const sponsorsFolder = getByName(doc, 'Sponsors');
-        const sponsorBar = sponsorsFolder ? getByName(sponsorsFolder, 'SPONSOR BAR') : null;
-        const backgroundBlack = background ? getByName(background, 'BLACK') : null;
-        const backgroundWhite = background ? getByName(background, 'WHITE') : null;
 
-        // Header layers (NBHL standings template has no HEADING / DATE)
-        const divisionText = header ? getByName(header, 'DIVISION') : null;
-        const emblemLayer = header ? getByName(header, 'EMBLEM') : null;
-        const divisionColorLayer = header ? getByName(header, 'HEADER COLOR') : null;
+        // Header layers
+        const locationText = header ? getByName(header, 'LOCATION') : null;
+        const levelText = header ? getByName(header, 'LEVEL') : null;
 
-        if (divisionText) {
-          divisionText.textItem.contents = (division + ' ' + conf).toUpperCase();
-        }
-        const tierFolder = header ? getByName(header, 'TIER') : null;
-        if (tierFolder) {
-          for (let i = 0; i < tierFolder.layers.length; i++) {
-            tierFolder.layers[i].visible = (tierFolder.layers[i].name === conf);
-          }
-        }
-        if (emblemLayer) {
-          await imageHandler.replaceLayerWithImage(emblemLayer, `LOGOS/Division Emblems/PNG/${divAbb}_emblem.png`, baseFolder);
-        }
+        // Split division name on " - " → LOCATION / LEVEL
+        const divisionRaw = String(division || divAbb);
+        const divSplitIdx = divisionRaw.indexOf(' - ');
+        const divLocationLabel = divSplitIdx >= 0 ? divisionRaw.slice(0, divSplitIdx).toUpperCase() : divisionRaw.toUpperCase();
+        const divLevelLabel = divSplitIdx >= 0 ? divisionRaw.slice(divSplitIdx + 3).toUpperCase() : '';
+        if (locationText && locationText.textItem) locationText.textItem.contents = divLocationLabel;
+        if (levelText && levelText.textItem) levelText.textItem.contents = divLevelLabel;
 
-        const sponsorDir = 'LOGOS/Sponsor/Division Sponsors/Sponsor Bars/';
-        let sponsorSuffix = '';
-        if (backgroundBlack) sponsorSuffix = 'BLACK';
-        else if (backgroundWhite) sponsorSuffix = 'WHITE';
-        const sponsorBaseFile = divAbb + '_Sponsors.psd';
-        const sponsorBasePath = sponsorDir + sponsorBaseFile;
-        if (sponsorBar) {
-          let ok = false;
-          if (sponsorSuffix) {
-            const sponsorVariantFile = divAbb + '_Sponsors_' + sponsorSuffix + '.psd';
-            const variantPath = sponsorDir + sponsorVariantFile;
-            ok = await imageHandler.replaceLayerWithImage(sponsorBar, variantPath, baseFolder);
-          }
-          if (!ok) {
-            await imageHandler.replaceLayerWithImage(sponsorBar, sponsorBasePath, baseFolder);
-          }
+        // If div color 1 is very light, darken header text and show BLACK background layer
+        const divColor1Lum = relativeLuminance(divColor1Hex);
+        const headerIsLight = divColor1Lum > 0.75;
+        if (headerIsLight) {
+          if (locationText && locationText.textItem) setTextHex(locationText, '252525');
+          if (levelText && levelText.textItem) setTextHex(levelText, '252525');
         }
+        const blackLayer = background ? getByName(background, 'BLACK') : null;
+        if (blackLayer) blackLayer.visible = headerIsLight;
 
-        if (divisionColorLayer) {
-          await fillColor(divisionColorLayer, divColorHex);
-        }
+        // Background division colors
+        const divColor1Layer = background ? getByName(background, 'DIV COLOR 1') : null;
+        const divColor2Layer = background ? getByName(background, 'DIV COLOR 2') : null;
+        if (divColor1Layer) await fillColor(divColor1Layer, divColor1Hex);
+        if (divColor2Layer) await fillColor(divColor2Layer, divColor2Hex);
 
         // Sort teams by rank property from spreadsheet
         let standings = divTeams.slice().sort((a, b) => {
@@ -325,7 +344,7 @@ async function handleStandingsUpdate(baseFolder) {
         //  - 15 teams  -> 8 + 7
         //  - 19 teams  -> 7 + 7 + 5
         //  - 20 teams  -> 7 + 7 + 6
-        const MAX_TEAMS_PER_CHUNK = 9;
+        const MAX_TEAMS_PER_CHUNK = 10;
         const chunks = [];
         if (numOfTeams <= MAX_TEAMS_PER_CHUNK) {
           chunks.push(standings);
@@ -368,7 +387,7 @@ async function handleStandingsUpdate(baseFolder) {
             const team1Bounds = team1Box.boundsNoEffects;
             const boxHeight = Math.abs(team1Bounds.bottom - team1Bounds.top);
 
-            const defaultSpacing = boxHeight * 0.15;
+            const defaultSpacing = boxHeight * 0.25;
             const totalHeight = (boxHeight * chunkTeams) + (defaultSpacing * (chunkTeams - 1));
 
             let scale = 100;
@@ -425,6 +444,7 @@ async function handleStandingsUpdate(baseFolder) {
             const recordText = getByName(teamX, 'RECORD');
             const ptsText = getByName(teamX, 'PTS');
             const pctText = getByName(teamX, 'PT%');
+            const diffText = getByName(teamX, 'DIFF');
 
             // Team color and logo lookup
             let tColor = '000000';
@@ -441,11 +461,13 @@ async function handleStandingsUpdate(baseFolder) {
             }
 
             //update team information
-            await fillColor(teamColorLayer, tColor);
-            const logoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
-            let ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, logoUrl);
-            if (!ok) ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
-            if (!ok) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
+            if (teamColorLayer) await fillColor(teamColorLayer, tColor);
+            if (teamLogoLayer) {
+              const logoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
+              let ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, logoUrl);
+              if (!ok) ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
+              if (!ok) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
+            }
 
             // Text updates
             if (teamCityLayer) {
@@ -465,15 +487,24 @@ async function handleStandingsUpdate(baseFolder) {
             if (rankText) rankText.textItem.contents = String(processedBefore + j);
             const row = finalStandings[i];
             if (recordText) {
-              recordText.textItem.contents = `${row.w}-${row.otw}-${row.otl}-${row.l}`;
+              recordText.textItem.contents = `${row.w}-${row.l}-${row.otl}`;
             }
             if (ptsText) ptsText.textItem.contents = row.pts;
             if (pctText) pctText.textItem.contents = `PT% ${row.pct}`;
+            if (diffText) {
+              const diffVal = Number(row.diff) || 0;
+              diffText.textItem.contents = diffVal > 0 ? `+${diffVal}` : String(diffVal);
+              if (diffVal > 0) {
+                setTextHex(diffText, '1d9c00');
+              } else if (diffVal < 0) {
+                setTextHex(diffText, 'f60000');
+              } else {
+                setTextHex(diffText, '000000');
+              }
+            }
 
-            // Text on team color bar: bright colors (luminance > 0.70) → black text; else white
+            // Text colors: teamCityLayer only (teamName and record stay as set in template)
             if (teamCityLayer) setTextColor(teamCityLayer, tColor);
-            if (teamNameLayer) setTextColor(teamNameLayer, tColor);
-            if (recordText) setTextColor(recordText, tColor);
             if (pctText) setTextColor(pctText, tColor);
             if (ptsText) {
               const ptsColor = new app.SolidColor();
@@ -540,6 +571,12 @@ const setTextColor = (layer, backgroundColor) => {
   color.rgb.hexValue = luminance >= 0.7 ? '252525' : 'ffffff';
   layer.textItem.characterStyle.color = color;
 };
+
+function setTextHex(layer, hex) {
+  const color = new app.SolidColor();
+  color.rgb.hexValue = hex.replace(/^#/, '');
+  layer.textItem.characterStyle.color = color;
+}
 
 function relativeLuminance(hex) {
   const { r, g, b } = hexToRgb(hex);

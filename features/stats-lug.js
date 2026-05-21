@@ -42,6 +42,9 @@ async function handleStatsUpdate(baseFolder) {
     const { divs, confs, teams } = leagueData;
     const { schedule, week, year } = scheduleData;
 
+    console.log('[CSV] Player stats (' + playerStats.length + ' rows):', JSON.stringify(playerStats, null, 2));
+    console.log('[CSV] Goalie stats (' + goalieStats.length + ' rows):', JSON.stringify(goalieStats, null, 2));
+
     // Normalize .div fields so leagues that store "div conf" order match the canonical "conf div" form.
     [playerStats, goalieStats, playoffPlayerStats, playoffGoalieStats].forEach(arr => {
       arr.forEach(t => { t.div = leagueConfig.normalizeDivName(t.div, divs); });
@@ -85,12 +88,12 @@ async function handleStatsUpdate(baseFolder) {
           const regularGames = [];
           const playoffGames = [];
           for (let n = 0; n < schedule.length; n++) {
+            const targetDiv = (divs[m].conf + ' ' + divs[m].div);
             const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
             const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
-            const targetDiv = (divs[m].conf + ' ' + divs[m].div);
             const isSameDiv = gameDiv1 === targetDiv || gameDiv2 === targetDiv;
             const gameWeek = Number(schedule[n].week);
-            const isWeek = gameWeek === week || gameWeek === week + 1; // Include next week for playoffs
+            const isWeek = gameWeek === week
             if (isSameDiv && isWeek) {
               if (schedule[n].gameType === 'Playoffs') {
                 playoffGames.push(schedule[n]);
@@ -99,18 +102,23 @@ async function handleStatsUpdate(baseFolder) {
               }
             }
           }
-          if (regularGames.length !== 0) activeRegularDivs.push([{ conf: divs[m].conf, division1: divs[m].div }, ...regularGames]);
-          if (playoffGames.length !== 0) activePlayoffDivs.push([{ conf: divs[m].conf, division1: divs[m].div }, ...playoffGames]);
+          if (regularGames.length !== 0) {
+            activeRegularDivs.push([{ conf: divs[m].conf, division1: divs[m].div, gameType: 'Regular Season' }, ...regularGames]);
+          }
+          if (playoffGames.length !== 0) {
+            activePlayoffDivs.push([{ conf: divs[m].conf, division1: divs[m].div, gameType: 'Playoffs' }, ...playoffGames]);
+          }
         }
       } else {
         const regularGames = [];
         const playoffGames = [];
+        const selectedDivMeta = divs.find((d) => (d.conf + ' ' + d.div) === userDiv);
         for (let n = 0; n < schedule.length; n++) {
           const gameDiv1 = schedule[n].conf + ' ' + schedule[n].division1;
           const gameDiv2 = schedule[n].conf + ' ' + schedule[n].division2;
           const isSameDiv = gameDiv1 === userDiv || gameDiv2 === userDiv;
           const gameWeek = Number(schedule[n].week);
-          const isWeek = gameWeek === week || gameWeek === week + 1; // Include next week for playoffs
+          const isWeek = gameWeek === week
           if (isSameDiv && isWeek) {
             if (schedule[n].gameType === 'Playoffs') {
               playoffGames.push(schedule[n]);
@@ -119,8 +127,10 @@ async function handleStatsUpdate(baseFolder) {
             }
           }
         }
-        if (regularGames.length !== 0) activeRegularDivs.push(regularGames);
-        if (playoffGames.length !== 0) activePlayoffDivs.push(playoffGames);
+        const conf = selectedDivMeta ? selectedDivMeta.conf : String(userDiv).split(' ')[0] || '';
+        const division1 = selectedDivMeta ? selectedDivMeta.div : String(userDiv).replace(`${conf} `, '');
+        if (regularGames.length !== 0) activeRegularDivs.push([{ conf, division1, gameType: 'Regular Season' }, ...regularGames]);
+        if (playoffGames.length !== 0) activePlayoffDivs.push([{ conf, division1, gameType: 'Playoffs' }, ...playoffGames]);
       }
     }
     
@@ -148,10 +158,10 @@ async function handleStatsUpdate(baseFolder) {
           if (statsToUse[i].div === confDiv){
               divPlayerStats.push(statsToUse[i])
           }
-      }    
+      }
 
-      if (divPlayerStats.length < 5)
-          return; // Skip if not enough players
+      if (divPlayerStats.length < 1)
+          return; // Skip if no players
 
       //build goalie stat array
       const divGoalieStats = []
@@ -166,10 +176,15 @@ async function handleStatsUpdate(baseFolder) {
       //convert division to abbreviations and tier
       let divAbb = null;
       let conf = null;
+      let minGpGaaRatio = 0.44;
       for (let i=0; i < divs.length; i++){
           if (confDiv === divs[i].conf + " " + divs[i].div){
               divAbb = divs[i].abb
               conf = divs[i].conf
+              const configuredRatio = Number(divs[i].minGpGaa);
+              if (Number.isFinite(configuredRatio) && configuredRatio > 0) {
+                  minGpGaaRatio = configuredRatio;
+              }
               break;
           }
       }
@@ -186,11 +201,13 @@ async function handleStatsUpdate(baseFolder) {
           }
       }
 
-      // Division color (per division, not overall conference)
-      let divColorHex = 'ffffff';
+      // Division colors
+      let divColor1Hex = 'ffffff';
+      let divColor2Hex = 'ffffff';
       for (let i = 0; i < divs.length; i++) {
           if (divs[i].abb === divAbb) {
-              divColorHex = String(divs[i].color1);
+              divColor1Hex = divs[i].color1 || 'ffffff';
+              divColor2Hex = divs[i].color2 || 'ffffff';
               break;
           }
       }
@@ -201,10 +218,12 @@ async function handleStatsUpdate(baseFolder) {
           lastName: null,
           teamName: null,
           div: null,
+          gp: 0,
           goals: 0,
           assists: 0,
           points: 0,
           ppg: 0,
+          gpg: 0
       }
 
       //SET UP TOP POINT SCORERS
@@ -238,7 +257,12 @@ async function handleStatsUpdate(baseFolder) {
 
       for (let m=0; m<3; m++){ //for each goal slot
           for (let n=0; n<divPlayerStats.length; n++){ //cycle through all players and replace goal slot with highest scorer
-              if (Number(divPlayerStats[n].goals) > Number(topGoals[m].goals)){
+              const goalsGreater = Number(divPlayerStats[n].goals) > Number(topGoals[m].goals);
+              const goalsEqual = Number(divPlayerStats[n].goals) === Number(topGoals[m].goals);
+              const currentGpg = Number(divPlayerStats[n].gpg ?? 0);
+              const topGpg = Number(topGoals[m].gpg ?? 0);
+              const gpgBetter = currentGpg > topGpg;
+              if (goalsGreater || (goalsEqual && gpgBetter)){
                   if (m===0){
                       topGoals[m] = divPlayerStats[n]
                   }
@@ -284,7 +308,7 @@ async function handleStatsUpdate(baseFolder) {
               GPmax = Number(divGoalieStats[n].GP)
           
       }
-      const GPmin = Math.round(0.44*GPmax)
+      const GPmin = Math.round(minGpGaaRatio*GPmax)
 
       //define null goalie
       const nullGoalie = {
@@ -294,7 +318,8 @@ async function handleStatsUpdate(baseFolder) {
           div: null,
           GA: 99,
           GAA: 99,
-          GP: 0
+          GP: 0,
+          wins: 0
       }
 
       //then set up top GAA based on min games played
@@ -302,7 +327,10 @@ async function handleStatsUpdate(baseFolder) {
 
       for (let m=0; m<3; m++){ //for each GAA slot
           for (let n=0; n<divGoalieStats.length; n++){ //cycle through all goalies in div
-              if (Number(divGoalieStats[n].GAA) < Number(topGAA[m].GAA) && Number(divGoalieStats[n].GP) >= GPmin){
+              const gaaLower = Number(divGoalieStats[n].GAA) < Number(topGAA[m].GAA);
+              const gaaEqual = Number(divGoalieStats[n].GAA) === Number(topGAA[m].GAA);
+              const winsGreater = Number(divGoalieStats[n].wins || 0) > Number(topGAA[m].wins || 0);
+              if ((gaaLower || (gaaEqual && winsGreater)) && Number(divGoalieStats[n].GP) >= GPmin){
                   if (m===0){
                       topGAA[m] = divGoalieStats[n]
                   }
@@ -366,18 +394,36 @@ async function handleStatsUpdate(baseFolder) {
           // Save As immediately to avoid modifying/saving the template
           if (doc.saveAs && doc.saveAs.psd) await doc.saveAs.psd(saveFile);
           const header = getByName(doc, 'HEADER');
-          const sectionHeaders = getByName(doc, 'Section Headers')
+          const sectionHeaders = getByName(doc, 'Section Headers');
+          const background = getByName(doc, 'BACKGROUND');
 
-          // Header Update
-          const divisionText = getByName(header, 'DIVISION');
-          const locationText = getByName(header, 'LOCATION');
-          const divisionColorLayer = getByName(header, 'HEADER COLOR');
+          // Header layers
+          const locationText = header ? getByName(header, 'LOCATION') : null;
+          const levelText = header ? getByName(header, 'LEVEL') : null;
 
-          divisionText.textItem.contents = division.toUpperCase();
-          locationText.textItem.contents = confLocation.toUpperCase();
-  
-          // Division fill color
-          await fillColor(divisionColorLayer, divColorHex);
+          // Split division name on " - " → LOCATION / LEVEL
+          const divisionRaw = String(division || divAbb);
+          const divSplitIdx = divisionRaw.indexOf(' - ');
+          const divLocationLabel = divSplitIdx >= 0 ? divisionRaw.slice(0, divSplitIdx).toUpperCase() : divisionRaw.toUpperCase();
+          const divLevelLabel = divSplitIdx >= 0 ? divisionRaw.slice(divSplitIdx + 3).toUpperCase() : '';
+          if (locationText && locationText.textItem) locationText.textItem.contents = divLocationLabel;
+          if (levelText && levelText.textItem) levelText.textItem.contents = divLevelLabel;
+
+          // If div color 1 is very light, darken header text and show BLACK background layer
+          const divColor1Lum = relativeLuminance(divColor1Hex);
+          const headerIsLight = divColor1Lum > 0.75;
+          if (headerIsLight) {
+            if (locationText && locationText.textItem) setTextHex(locationText, '252525');
+            if (levelText && levelText.textItem) setTextHex(levelText, '252525');
+          }
+          const blackLayer = background ? getByName(background, 'BLACK') : null;
+          if (blackLayer) blackLayer.visible = headerIsLight;
+
+          // Background division colors
+          const divColor1Layer = background ? getByName(background, 'DIV COLOR 1') : null;
+          const divColor2Layer = background ? getByName(background, 'DIV COLOR 2') : null;
+          if (divColor1Layer) await fillColor(divColor1Layer, divColor1Hex);
+          if (divColor2Layer) await fillColor(divColor2Layer, divColor2Hex);
 
           // POINTS Update - cycle through top 5 players
           const pointsFolder = getByName(doc, 'POINTS');
@@ -394,8 +440,7 @@ async function handleStatsUpdate(baseFolder) {
               }
               
               // Get all layer references
-              const firstNameLayer = getByName(pointsX, 'FIRST NAME');
-              const lastNameLayer = getByName(pointsX, 'LAST NAME');
+              const fullNameLayer = getByName(pointsX, 'FULL NAME');
               const teamNameLayer = getByName(pointsX, 'TEAM NAME');
               const goalsLayer = getByName(pointsX, 'G');
               const assistsLayer = getByName(pointsX, 'A');
@@ -417,25 +462,20 @@ async function handleStatsUpdate(baseFolder) {
               }
               
               // Update team information
-              await fillColor(teamColorLayer, tColor);
+              if (teamColorLayer) await fillColor(teamColorLayer, tColor);
               const logoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
               let ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, logoUrl);
               if (!ok) ok = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
               if (!ok) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
               // Update text layers
-              const { displayFirst: ptFirst, displayLast: ptLast } = resolvePlayerName(topPoints[i].firstName, topPoints[i].lastName);
-              firstNameLayer.textItem.contents = ptFirst;
-              lastNameLayer.textItem.contents = ptLast;
-              teamNameLayer.textItem.contents = (() => { const u = String(topPoints[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
+              if (fullNameLayer) fullNameLayer.textItem.contents = String(topPoints[i].fullName || '').toUpperCase();
+              if (teamNameLayer) {
+                teamNameLayer.textItem.contents = (() => { const u = String(topPoints[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
+              }
               goalsLayer.textItem.contents = topPoints[i].goals;
               assistsLayer.textItem.contents = topPoints[i].assists;
               pointsLayer.textItem.contents = topPoints[i].points;
-              
-              // Set text colors based on background
-              setTextColor(firstNameLayer, tColor);
-              setTextColor(lastNameLayer, tColor);
-              setTextColor(teamNameLayer, tColor);
           }
 
           // GOALS Update - cycle through top 3 goal scorers
@@ -457,7 +497,6 @@ async function handleStatsUpdate(baseFolder) {
               }
               
               // Get all layer references
-              const firstNameLayer = getByName(goalsX, 'FIRST NAME');
               const lastNameLayer = getByName(goalsX, 'LAST NAME');
               const teamNameLayer = getByName(goalsX, 'TEAM NAME');
               const goalsLayer = getByName(goalsX, 'G');
@@ -478,17 +517,20 @@ async function handleStatsUpdate(baseFolder) {
               }
               
               // Update team information
-              await fillColor(teamColorLayer, tColor);
+              if (teamColorLayer) await fillColor(teamColorLayer, tColor);
               const goalLogoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
               let goalOk = await imageHandler.replaceLayerWithImage(teamLogoLayer, goalLogoUrl);
               if (!goalOk) goalOk = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
               if (!goalOk) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
-              // Update text layers
-              const { displayFirst: glFirst, displayLast: glLast } = resolvePlayerName(topGoals[i].firstName, topGoals[i].lastName);
-              firstNameLayer.textItem.contents = glFirst;
+              // Update text layers — strip first word from fullName, use rest as last name
+              const glFull = String(topGoals[i].fullName || '').trim();
+              const glSpaceIdx = glFull.indexOf(' ');
+              const glLast = (glSpaceIdx >= 0 ? glFull.slice(glSpaceIdx + 1) : glFull).toUpperCase();
               lastNameLayer.textItem.contents = glLast;
-              teamNameLayer.textItem.contents = (() => { const u = String(topGoals[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
+              if (teamNameLayer) {
+                teamNameLayer.textItem.contents = (() => { const u = String(topGoals[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
+              }
               if (goalsHeader.textItem.contents == 'PTS/GP')
                   goalsLayer.textItem.contents = topGoals[i].ppg;
               else
@@ -499,10 +541,6 @@ async function handleStatsUpdate(baseFolder) {
               if (lastNameLayer.textItem.contents.length > 11)
                   lastNameLayer.textItem.characterStyle.size = 0.75 * fontSize;   
               
-              // Set text colors based on background
-              setTextColor(firstNameLayer, tColor);
-              setTextColor(lastNameLayer, tColor);
-              setTextColor(teamNameLayer, tColor);
           }
 
           // GAA Update - cycle through top 3 goalies
@@ -521,10 +559,10 @@ async function handleStatsUpdate(baseFolder) {
               
               // Get all layer references
               const minimumLayer = getByName(gaaFolder, 'MIN GP');
-              const firstNameLayer = getByName(gaaX, 'FIRST NAME');
               const lastNameLayer = getByName(gaaX, 'LAST NAME');
               const teamNameLayer = getByName(gaaX, 'TEAM NAME');
               const gaaLayer = getByName(gaaX, 'GAA');
+              const gpLayer = getByName(gaaX, 'GP');
               const teamLogoLayer = getByName(gaaX, 'LOGO');
               const teamColorLayer = getByName(gaaX, 'TEAM COLOR');
               
@@ -542,18 +580,22 @@ async function handleStatsUpdate(baseFolder) {
               }
               
               // Update team information
-              await fillColor(teamColorLayer, tColor);
+              if (teamColorLayer) await fillColor(teamColorLayer, tColor);
               const gaaLogoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(divAbb)}/${encodeURIComponent(tFull)}.png`;
               let gaaOk = await imageHandler.replaceLayerWithImage(teamLogoLayer, gaaLogoUrl);
               if (!gaaOk) gaaOk = await imageHandler.replaceLayerWithImage(teamLogoLayer, `LOGOS/TEAMS/${conf}/${divAbb}/${tFull}.png`, baseFolder);
               if (!gaaOk) await imageHandler.replaceLayerWithImage(teamLogoLayer, "LOGOS/LeagueLogo.png", baseFolder);
 
-              // Update text layers
-              const { displayFirst: gaFirst, displayLast: gaLast } = resolvePlayerName(topGAA[i].firstName, topGAA[i].lastName);
-              firstNameLayer.textItem.contents = gaFirst;
+              // Update text layers — strip first word from fullName, use rest as last name
+              const gaFull = String(topGAA[i].fullName || '').trim();
+              const gaSpaceIdx = gaFull.indexOf(' ');
+              const gaLast = (gaSpaceIdx >= 0 ? gaFull.slice(gaSpaceIdx + 1) : gaFull).toUpperCase();
               lastNameLayer.textItem.contents = gaLast;
-              teamNameLayer.textItem.contents = (() => { const u = String(topGAA[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
+              if (teamNameLayer) {
+                teamNameLayer.textItem.contents = (() => { const u = String(topGAA[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
+              }
               gaaLayer.textItem.contents = topGAA[i].GAA;
+              if (gpLayer) gpLayer.textItem.contents = `${topGAA[i].GP}GP`;
               minimumLayer.textItem.contents = `(MIN. ${GPmin}GP)`;
               
               // Adjust size if last name is too long 
@@ -561,10 +603,6 @@ async function handleStatsUpdate(baseFolder) {
               if (lastNameLayer.textItem.contents.length > 11)
                   lastNameLayer.textItem.characterStyle.size = 0.75 * fontSize;                
               
-              // Set text colors based on background
-              setTextColor(firstNameLayer, tColor);
-              setTextColor(lastNameLayer, tColor);
-              setTextColor(teamNameLayer, tColor);
           }
           
           // Export PNG to Exports/Week {week}/{DOC_EXPORT}
@@ -655,10 +693,17 @@ const getByName = (parent, name) => {
     return layers.find(l => l.name === name);
 };
 
+function setTextHex(layer, hex) {
+  if (!layer) return;
+  const color = new app.SolidColor();
+  color.rgb.hexValue = String(hex).replace(/^#/, '').toLowerCase();
+  layer.textItem.characterStyle.color = color;
+}
+
 const setTextColor = (layer, backgroundColor) => {
     const color = new app.SolidColor();
     const luminance = relativeLuminance(backgroundColor);
-    color.rgb.hexValue = luminance >= 0.75 ? '252525' : 'ffffff';
+    color.rgb.hexValue = luminance >= 0.7 ? '252525' : 'ffffff';
     layer.textItem.characterStyle.color = color;
 };
 

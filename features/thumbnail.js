@@ -207,11 +207,18 @@ function getTeamContext(teamLabel, teams, divs, defaultConf, defaultDivAbb, game
     teamName = String(match.teamName || nameRaw).trim();
     color1 = String(match.color1 || color1).trim();
 
-    const fullDiv = leagueConfig.normalizeDivName(match.div, divs);
-    const divInfo = divs.find((d) => `${d.conf} ${d.div}` === fullDiv);
-    if (divInfo) {
-      divAbb = divInfo.abb || divAbb;
-      conf = divInfo.conf || conf;
+    // Only update divAbb/conf from the matched team record if the game didn't
+    // already supply an explicit division. When gameDiv is set (from div1/div2
+    // on the schedule row), that division is authoritative — overriding it with
+    // whatever division the teams list happens to store this team under causes
+    // logos to be looked up under the wrong conf/divAbb folder.
+    if (!gameDiv) {
+      const fullDiv = leagueConfig.normalizeDivName(match.div, divs);
+      const divInfo = divs.find((d) => `${d.conf} ${d.div}` === fullDiv);
+      if (divInfo) {
+        divAbb = divInfo.abb || divAbb;
+        conf = divInfo.conf || conf;
+      }
     }
   }
 
@@ -228,16 +235,15 @@ async function updateTeamFolder(teamFolder, teamCtx, baseFolder) {
   if (teamColorLayer) await fillColor(teamColorLayer, teamCtx.color1);
 
   if (logoLayer) {
+    const localPath = `LOGOS/TEAMS/${teamCtx.conf}/${teamCtx.divAbb}/${teamCtx.fullTeam}.png`;
     const logoUrl = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(teamCtx.conf)}/${encodeURIComponent(teamCtx.divAbb)}/${encodeURIComponent(teamCtx.fullTeam)}.png`;
+    console.log(`[LOGO] conf="${teamCtx.conf}" divAbb="${teamCtx.divAbb}" fullTeam="${teamCtx.fullTeam}" → ${localPath}`);
     let ok = await imageHandler.replaceLayerWithImage(logoLayer, logoUrl);
     if (!ok) {
-      ok = await imageHandler.replaceLayerWithImage(
-        logoLayer,
-        `LOGOS/TEAMS/${teamCtx.conf}/${teamCtx.divAbb}/${teamCtx.fullTeam}.png`,
-        baseFolder
-      );
+      ok = await imageHandler.replaceLayerWithImage(logoLayer, localPath, baseFolder);
     }
     if (!ok) {
+      console.warn(`[LOGO] Not found, falling back to LeagueLogo: ${localPath}`);
       await imageHandler.replaceLayerWithImage(logoLayer, "LOGOS/LeagueLogo.png", baseFolder);
     }
   }

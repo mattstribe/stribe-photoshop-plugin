@@ -441,6 +441,14 @@ async function handleStatsUpdate(baseFolder) {
           for (let i = 0; i < 5; i++) {
               const j = i + 1;
               const pointsX = getByName(pointsFolder, 'POINTS ' + j);
+
+              // Hide slot if no player data
+              if (topPoints[i].teamName === null) {
+                  if (pointsX) pointsX.visible = false;
+                  continue;
+              } else {
+                  if (pointsX) pointsX.visible = true;
+              }
               
               // Get all layer references
               const firstNameLayer = getByName(pointsX, 'FIRST NAME');
@@ -501,6 +509,14 @@ async function handleStatsUpdate(baseFolder) {
           for (let i = 0; i < 3; i++) {
               const j = i + 1;
               const goalsX = getByName(goalsFolder, 'GOALS ' + j);
+
+              // Hide slot if no player data
+              if (topGoals[i].teamName === null) {
+                  if (goalsX) goalsX.visible = false;
+                  continue;
+              } else {
+                  if (goalsX) goalsX.visible = true;
+              }
               
               // Get all layer references
               const firstNameLayer = getByName(goalsX, 'FIRST NAME');
