@@ -213,12 +213,15 @@ async function handleScheduleUpdate(baseFolder) {
               const background = getByName(doc, 'BACKGROUND');
 
               // Header layers
-              const headerText = getByName(header, 'HEADING');
               const locationText = getByName(header, 'LOCATION');
               const levelText = getByName(header, 'LEVEL');
 
-              // HEADING
-              headerText.textItem.contents = docType === 'Final Scores' ? 'FINAL SCORES' : 'UPCOMING GAMES';
+              // HEADING — toggle visibility of the two heading layers
+              const finalScoresHeading   = getByName(header, 'FINAL SCORES');
+              const upcomingGamesHeading = getByName(header, 'UPCOMING GAMES');
+              const isFinalScores = docType === 'Final Scores';
+              if (finalScoresHeading)   finalScoresHeading.visible   = isFinalScores;
+              if (upcomingGamesHeading) upcomingGamesHeading.visible = !isFinalScores;
 
               // Split division name on " - " → LOCATION / LEVEL
               const divisionRaw = String(division || divAbb);

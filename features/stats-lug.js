@@ -526,8 +526,9 @@ async function handleStatsUpdate(baseFolder) {
               // Update text layers — strip first word from fullName, use rest as last name
               const glFull = String(topGoals[i].fullName || '').trim();
               const glSpaceIdx = glFull.indexOf(' ');
+              const glInitial = glSpaceIdx >= 0 ? glFull[0].toUpperCase() + '. ' : '';
               const glLast = (glSpaceIdx >= 0 ? glFull.slice(glSpaceIdx + 1) : glFull).toUpperCase();
-              lastNameLayer.textItem.contents = glLast;
+              lastNameLayer.textItem.contents = glInitial + glLast;
               if (teamNameLayer) {
                 teamNameLayer.textItem.contents = (() => { const u = String(topGoals[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
               }
@@ -589,8 +590,9 @@ async function handleStatsUpdate(baseFolder) {
               // Update text layers — strip first word from fullName, use rest as last name
               const gaFull = String(topGAA[i].fullName || '').trim();
               const gaSpaceIdx = gaFull.indexOf(' ');
+              const gaInitial = gaSpaceIdx >= 0 ? gaFull[0].toUpperCase() + '. ' : '';
               const gaLast = (gaSpaceIdx >= 0 ? gaFull.slice(gaSpaceIdx + 1) : gaFull).toUpperCase();
-              lastNameLayer.textItem.contents = gaLast;
+              lastNameLayer.textItem.contents = gaInitial + gaLast;
               if (teamNameLayer) {
                 teamNameLayer.textItem.contents = (() => { const u = String(topGAA[i].teamName).toUpperCase(); return u.length > 20 ? (u.slice(0, 20) + '...') : u; })();
               }

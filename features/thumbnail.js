@@ -41,7 +41,7 @@ async function handleThumbnailUpdate(baseFolder) {
       }
     }
 
-    // Only process current-week games with final scores/status.
+    // Process all current-week games regardless of completion status.
     const finalGames = schedule.filter((g) => {
       const isCurrentWeek = Number(g.week) === Number(week);
       if (!isCurrentWeek) return false;
@@ -51,17 +51,12 @@ async function handleThumbnailUpdate(baseFolder) {
       if (selectedDivAbb && gameDivAbb !== selectedDivAbb) return false;
       if (selectedConf && !selectedDivAbb && gameConf !== selectedConf) return false;
 
-      const s1 = String(g.score1 ?? "").trim();
-      const s2 = String(g.score2 ?? "").trim();
-      const hasScores = s1 !== "" && s2 !== "";
-      const status = String(g.status ?? "").toUpperCase();
-      const markedFinal = status.includes("FINAL");
-      return hasScores || markedFinal;
+      return true;
     });
 
     if (!finalGames.length) {
       const selectedTag = input && input !== "ALL" ? input : "ALL";
-      statusEl.textContent = `⚠️ No final games found for ${selectedTag} (Week ${week})`;
+      statusEl.textContent = `⚠️ No games found for ${selectedTag} (Week ${week})`;
       return;
     }
 

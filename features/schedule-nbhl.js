@@ -425,8 +425,17 @@ async function handleScheduleUpdate(baseFolder) {
 
                 // Seed badges (playoffs) or power rank badges (regular season)
                 if (finalGames[i].gameType === 'Playoffs') {
-                  applyTeamSeedFolder(team1SeedFolder, finalGames[i].seed1);
-                  applyTeamSeedFolder(team2SeedFolder, finalGames[i].seed2);
+                  // Hide seed folder for TBD teams
+                  if (team1DisplayName === 'TBD') {
+                    if (team1SeedFolder) team1SeedFolder.visible = false;
+                  } else {
+                    applyTeamSeedFolder(team1SeedFolder, finalGames[i].seed1);
+                  }
+                  if (team2DisplayName === 'TBD') {
+                    if (team2SeedFolder) team2SeedFolder.visible = false;
+                  } else {
+                    applyTeamSeedFolder(team2SeedFolder, finalGames[i].seed2);
+                  }
                 } else {
                   applyTeamRankFolder(team1RankFolder, t1PowerRanking, t1Tier || conf);
                   applyTeamRankFolder(team2RankFolder, t2PowerRanking, t2Tier || conf);

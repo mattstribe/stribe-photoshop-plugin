@@ -21,12 +21,14 @@ async function handleBracketUpdate(baseFolder) {
 
     await leagueConfig.invalidateLeagueCache(baseFolder);
 
-    const [leagueData, bracketRows] = await Promise.all([
+    const [leagueData, bracketRows, scheduleData] = await Promise.all([
       leagueConfig.loadLeagueConfig(baseFolder),
       leagueConfig.loadBracket(baseFolder),
+      leagueConfig.loadSchedule(baseFolder),
     ]);
 
     const { divs, confs, teams } = leagueData;
+    const { schedule, week } = scheduleData;
 
     if (!bracketRows.length) {
       statusEl.innerHTML = "No bracket data found.";
@@ -44,10 +46,33 @@ async function handleBracketUpdate(baseFolder) {
       divMap[row.division].push(row);
     }
 
+    // Returns true if the division has at least one playoff game this week
+    const hasPlayoffGamesThisWeek = (divAbb) => {
+      const meta = divs.find(d => d.abb === divAbb);
+      if (!meta) return false;
+      const confDiv = meta.conf + ' ' + meta.div;
+      return schedule.some(g => {
+        const gDiv1 = g.conf + ' ' + g.division1;
+        const gDiv2 = g.conf + ' ' + g.division2;
+        return (gDiv1 === confDiv || gDiv2 === confDiv)
+          && g.gameType === 'Playoffs'
+          && Number(g.week) === week;
+      });
+    };
+
+    // Returns true if no wins have been recorded yet for this division
+    // (beginning of playoffs — bracket exists but no games played)
+    const allWinsAreZero = (divAbb) => {
+      const rows = divMap[divAbb] || [];
+      return rows.every(r => Number(r.w1 || 0) === 0 && Number(r.w2 || 0) === 0);
+    };
+
     // Determine which divAbbs to process
     let targetAbbs;
     if (userDiv === 'ALL') {
-      targetAbbs = Object.keys(divMap);
+      targetAbbs = Object.keys(divMap).filter(abb =>
+        hasPlayoffGamesThisWeek(abb) || allWinsAreZero(abb)
+      );
     } else {
       // userDiv is "CONF DIV" — find matching abb
       const meta = divs.find(d => (d.conf + ' ' + d.div) === userDiv);
@@ -189,6 +214,7 @@ async function handleBracketUpdate(baseFolder) {
 
             slotFolder.visible = true;
             const row = slotDataMap[slotFolder.name];
+            const isFinals = slotFolder.name === 'F';
 
             const team1Folder = getByName(slotFolder, 'TEAM 1');
             const team2Folder = getByName(slotFolder, 'TEAM 2');
@@ -199,18 +225,37 @@ async function handleBracketUpdate(baseFolder) {
             // BO1 → first team to 1 win advances; BO3 → first to 2
             const winsNeeded = bestOf >= 3 ? 2 : 1;
             // A team is eliminated when the opponent has reached winsNeeded
-            const team1Elim = w2 >= winsNeeded;
-            const team2Elim = w1 >= winsNeeded;
+            const team1Elim  = w2 >= winsNeeded;
+            const team2Elim  = w1 >= winsNeeded;
+            // CHAMP: only tracked in the Finals slot
+            const team1Champ = isFinals && w1 >= winsNeeded;
+            const team2Champ = isFinals && w2 >= winsNeeded;
 
-            await updateBracketTeam(team1Folder, row ? row.team1 : '', row ? row.seed1 : '', w1, team1Elim, bestOf, teams, conf, divAbb, baseFolder);
-            await updateBracketTeam(team2Folder, row ? row.team2 : '', row ? row.seed2 : '', w2, team2Elim, bestOf, teams, conf, divAbb, baseFolder);
+            await updateBracketTeam(team1Folder, row ? row.team1 : '', row ? row.seed1 : '', w1, team1Elim, team1Champ, bestOf, teams, conf, divAbb, baseFolder);
+            await updateBracketTeam(team2Folder, row ? row.team2 : '', row ? row.seed2 : '', w2, team2Elim, team2Champ, bestOf, teams, conf, divAbb, baseFolder);
+          }
+
+          // ── SCALE UP when there are no wildcard rounds ─────────────────
+          // A wildcard round exists if any W* slot has at least one team
+          const hasWildcards = (bracketGroup.layers || []).some(f =>
+            f.name.toUpperCase().startsWith('W') && slotHasTeams(f.name)
+          );
+
+          if (!hasWildcards) {
+            await scaleLayer(bracketGroup, 125);
+
+            const roundHeaders = getByName(doc, 'ROUND HEADERS');
+            if (roundHeaders) {
+              await scaleLayer(roundHeaders, 125);
+              await translateLayer(roundHeaders, 0, -50);
+            }
           }
         }
 
         // ── EXPORT ───────────────────────────────────────────────────────
-        const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', DOC_EXPORT]);
+        const exportFolder = await ensureFolderPath(gamedayFolder, ['Exports', `Week ${week}`, DOC_EXPORT]);
         const exportFile   = await exportFolder.createFile(`${divAbb}_${DOC_EXPORT}.png`, { overwrite: true });
-        const cdnPath      = exportHandler.buildCdnPath(baseFolder.name, '', DOC_EXPORT, exportFile.name);
+        const cdnPath      = exportHandler.buildCdnPath(baseFolder.name, week, DOC_EXPORT, exportFile.name);
         await exportHandler.exportPng(doc, exportFile, cdnPath, cloudExportEnabled);
 
         await doc.save();
@@ -228,21 +273,23 @@ async function handleBracketUpdate(baseFolder) {
 }
 
 // Update one team slot inside a bracket matchup folder
-async function updateBracketTeam(teamFolder, teamName, seed, wins, isElim, bestOf, teams, conf, divAbb, baseFolder) {
+async function updateBracketTeam(teamFolder, teamName, seed, wins, isElim, isChamp, bestOf, teams, conf, divAbb, baseFolder) {
   if (!teamFolder) return;
 
   const seedLayer    = getByName(teamFolder, 'SEED');
   const seedBoxLayer = getByName(teamFolder, 'SEED BOX');
   const elimLayer    = getByName(teamFolder, 'ELIM');
+  const champLayer   = getByName(teamFolder, 'CHAMP');
   const win1Layer    = getByName(teamFolder, 'W1');
   const win2Layer    = getByName(teamFolder, 'W2');
   const nameRaw      = String(teamName || '').trim();
 
   if (!nameRaw) {
-    // No team assigned yet — hide seed indicators, elim, and win pips
+    // No team assigned yet — hide all indicators
     if (seedLayer)    seedLayer.visible    = false;
     if (seedBoxLayer) seedBoxLayer.visible = false;
     if (elimLayer)    elimLayer.visible    = false;
+    if (champLayer)   champLayer.visible   = false;
     if (win1Layer)    win1Layer.visible    = false;
     if (win2Layer)    win2Layer.visible    = false;
     return;
@@ -252,11 +299,15 @@ async function updateBracketTeam(teamFolder, teamName, seed, wins, isElim, bestO
   if (seedLayer)    seedLayer.visible    = true;
   if (seedBoxLayer) seedBoxLayer.visible = true;
 
-  // ELIM overlay — reset first, then activate if eliminated
+  // ELIM overlay
   if (elimLayer) elimLayer.visible = false;
   if (elimLayer) elimLayer.visible = isElim;
 
-  // Win pip layers: reset both first, then activate based on wins
+  // CHAMP overlay (Finals only — layer won't exist in other slots)
+  if (champLayer) champLayer.visible = false;
+  if (champLayer) champLayer.visible = isChamp;
+
+  // Win pip layers: reset then activate
   if (win1Layer) win1Layer.visible = false;
   if (win2Layer) win2Layer.visible = false;
   if (win1Layer) win1Layer.visible = wins >= 1;
@@ -315,6 +366,37 @@ const getByName = (parent, name) => {
   if (!layers || !layers.find) return null;
   return layers.find(l => l.name === name);
 };
+
+async function scaleLayer(layer, percent) {
+  if (!layer) return;
+  await app.batchPlay([
+    { _obj: "select", _target: [{ _ref: "layer", _id: layer._id }], makeVisible: true },
+    {
+      _obj: "transform",
+      _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }],
+      freeTransformCenterState: { _enum: "quadCenterState", _value: "QCSAverage" },
+      width:  { _unit: "percentUnit", _value: percent },
+      height: { _unit: "percentUnit", _value: percent }
+    }
+  ], { synchronousExecution: true });
+}
+
+async function translateLayer(layer, dx, dy) {
+  if (!layer) return;
+  await app.batchPlay([
+    { _obj: "select", _target: [{ _ref: "layer", _id: layer._id }], makeVisible: true },
+    {
+      _obj: "transform",
+      _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }],
+      freeTransformCenterState: { _enum: "quadCenterState", _value: "QCSAverage" },
+      offset: {
+        _obj: "offset",
+        horizontal: { _unit: "pixelsUnit", _value: Math.round(dx) },
+        vertical:   { _unit: "pixelsUnit", _value: Math.round(dy) }
+      }
+    }
+  ], { synchronousExecution: true });
+}
 
 async function ensureFolderPath(rootFolder, segments) {
   let current = rootFolder;

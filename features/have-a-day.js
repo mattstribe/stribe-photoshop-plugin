@@ -340,11 +340,23 @@ function getTeamContext(teamName, rowDivision, teams, divs) {
   }
   if (!team) return null;
 
-  const fullDiv = leagueConfig.normalizeDivName(team.div, divs);
-  let divInfo = divs.find((d) => `${d.conf} ${d.div}` === fullDiv);
+  // The row's division value is authoritative — if the sheet specifies a division
+  // abb (e.g. "MA1"), use it first. Only fall back to the team's stored div when
+  // the sheet doesn't provide one, since the teams array may store a different
+  // "home" division (e.g. "MAL") that doesn't match the current season's placement.
+  let divInfo = null;
+  const rowDivAbb = String(rowDivision || "").trim().toUpperCase();
+  if (rowDivAbb) {
+    divInfo = divs.find((d) => String(d.abb || "").trim().toUpperCase() === rowDivAbb);
+  }
 
-  // Fallback: many team sheets store division as abbreviation (e.g. "PHI2")
-  // rather than "CONF DIV" full string.
+  // Fall back to the team's stored div if the sheet didn't resolve a division.
+  if (!divInfo) {
+    const fullDiv = leagueConfig.normalizeDivName(team.div, divs);
+    divInfo = divs.find((d) => `${d.conf} ${d.div}` === fullDiv);
+  }
+
+  // Last resort: treat team.div itself as an abbreviation.
   if (!divInfo) {
     const teamDivAbb = String(team.div || "").trim().toUpperCase();
     if (teamDivAbb) {
@@ -352,13 +364,6 @@ function getTeamContext(teamName, rowDivision, teams, divs) {
     }
   }
 
-  // Final fallback: use row-provided division value from HAVE-A-DAY sheet.
-  if (!divInfo) {
-    const rowDivAbb = String(rowDivision || "").trim().toUpperCase();
-    if (rowDivAbb) {
-      divInfo = divs.find((d) => String(d.abb || "").trim().toUpperCase() === rowDivAbb);
-    }
-  }
   if (!divInfo) return null;
 
   const color1 = pickColor(team.color1, "000000");
