@@ -98,9 +98,11 @@ function updateActionButtons() {
   const teamsUpdateBtn = document.getElementById("btnTeamsUpdate");
   const powerRankingsBtn = document.getElementById("btnPowerRankings");
   const bracketBtn       = document.getElementById("btnBracket");
+  const scheduleModeEl   = document.getElementById("scheduleMode");
 
   if (!hasFolderSelected) {
     scheduleBtn.disabled = standingsBtn.disabled = statsBtn.disabled = true;
+    if (scheduleModeEl) scheduleModeEl.disabled = true;
     if (haveADayPlayerBtn) haveADayPlayerBtn.disabled = true;
     if (haveADayGoalieBtn) haveADayGoalieBtn.disabled = true;
     if (thumbnailBtn) thumbnailBtn.disabled = true;
@@ -123,11 +125,13 @@ function updateActionButtons() {
   const ignoreWeek = !!(allDivsCheckbox && allDivsCheckbox.checked);
 
   // Schedule can ONLY run when we're respecting the current week filter.
+  const scheduleEnabled = !ignoreWeek && (isAll || isValidDiv || isValidConf);
   if (ignoreWeek) {
     scheduleBtn.disabled = true;
   } else {
-    scheduleBtn.disabled = !(isAll || isValidDiv || isValidConf);
+    scheduleBtn.disabled = !scheduleEnabled;
   }
+  if (scheduleModeEl) scheduleModeEl.disabled = !scheduleEnabled;
   standingsBtn.disabled = statsBtn.disabled = !(isAll || isValidDiv);
   if (haveADayPlayerBtn) haveADayPlayerBtn.disabled = !(isAll || isValidDiv);
   if (haveADayGoalieBtn) haveADayGoalieBtn.disabled = !(isAll || isValidDiv);

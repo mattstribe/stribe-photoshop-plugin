@@ -33,7 +33,14 @@ async function handleScheduleUpdate(baseFolder) {
     ]);
 
     const { divs, confs, teams } = leagueData;
-    const { schedule, week, year } = scheduleData;
+    let { schedule, week, year } = scheduleData;
+
+    // Filter schedule by mode before any grouping
+    const scheduleMode = document.getElementById("scheduleMode")?.value || 'both';
+    console.log(`[SCHEDULE] Mode: "${scheduleMode}" | Week: ${week} | Total games before filter: ${schedule.length}`);
+    if (scheduleMode === 'final')    schedule = schedule.filter(g => Number(g.week) === week);
+    if (scheduleMode === 'upcoming') schedule = schedule.filter(g => Number(g.week) === week + 1);
+    console.log(`[SCHEDULE] Games after filter: ${schedule.length}`);
 
     // Read user input (division abb, conference name, or ALL)
     const input = document.getElementById("divisionInput").value.trim().toUpperCase();
@@ -445,20 +452,20 @@ async function handleScheduleUpdate(baseFolder) {
                 setTextColor(team1nameText, t1Color);
                 setTextColor(team2nameText, t2Color);
 
-                // Logos with fallback to LeagueLogo.png
+                // Logos — use each team's own conf/divAbb, not the match's primary conf
                 if (t1Found) {
-                  const logo1Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(team1DivAbb)}/${encodeURIComponent(t1Full)}.png`;
+                  const logo1Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(t1Tier)}/${encodeURIComponent(team1DivAbb)}/${encodeURIComponent(t1Full)}.png`;
                   let ok1 = await imageHandler.replaceLayerWithImage(logo1, logo1Url);
-                  if (!ok1) ok1 = await imageHandler.replaceLayerWithImage(logo1, `LOGOS/TEAMS/${conf}/${team1DivAbb}/${t1Full}.png`, baseFolder);
+                  if (!ok1) ok1 = await imageHandler.replaceLayerWithImage(logo1, `LOGOS/TEAMS/${t1Tier}/${team1DivAbb}/${t1Full}.png`, baseFolder);
                   if (!ok1) await imageHandler.replaceLayerWithImage(logo1, "LOGOS/LeagueLogo.png", baseFolder);
                 } else {
                   await imageHandler.replaceLayerWithImage(logo1, "LOGOS/LeagueLogo.png", baseFolder);
                 }
 
                 if (t2Found) {
-                  const logo2Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(conf)}/${encodeURIComponent(team2DivAbb)}/${encodeURIComponent(t2Full)}.png`;
+                  const logo2Url = `${imageHandler.IMAGE_CDN_BASE}/${encodeURIComponent(baseFolder.name)}/${encodeURIComponent(t2Tier)}/${encodeURIComponent(team2DivAbb)}/${encodeURIComponent(t2Full)}.png`;
                   let ok2 = await imageHandler.replaceLayerWithImage(logo2, logo2Url);
-                  if (!ok2) ok2 = await imageHandler.replaceLayerWithImage(logo2, `LOGOS/TEAMS/${conf}/${team2DivAbb}/${t2Full}.png`, baseFolder);
+                  if (!ok2) ok2 = await imageHandler.replaceLayerWithImage(logo2, `LOGOS/TEAMS/${t2Tier}/${team2DivAbb}/${t2Full}.png`, baseFolder);
                   if (!ok2) await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
                 } else {
                   await imageHandler.replaceLayerWithImage(logo2, "LOGOS/LeagueLogo.png", baseFolder);
