@@ -46,33 +46,29 @@ async function handleBracketUpdate(baseFolder) {
       divMap[row.division].push(row);
     }
 
-    // Returns true if the division has at least one playoff game this week
-    const hasPlayoffGamesThisWeek = (divAbb) => {
+    // Returns true if the division has a playoff game in the current or upcoming week
+    const hasPlayoffGamesInRelevantWeeks = (divAbb) => {
       const meta = divs.find(d => d.abb === divAbb);
       if (!meta) return false;
       const confDiv = meta.conf + ' ' + meta.div;
       return schedule.some(g => {
         const gDiv1 = g.conf + ' ' + g.division1;
         const gDiv2 = g.conf + ' ' + g.division2;
+        const gameWeek = Number(g.week);
         return (gDiv1 === confDiv || gDiv2 === confDiv)
           && g.gameType === 'Playoffs'
-          && Number(g.week) === week;
+          && (gameWeek === week || gameWeek === week + 1);
       });
-    };
-
-    // Returns true if no wins have been recorded yet for this division
-    // (beginning of playoffs — bracket exists but no games played)
-    const allWinsAreZero = (divAbb) => {
-      const rows = divMap[divAbb] || [];
-      return rows.every(r => Number(r.w1 || 0) === 0 && Number(r.w2 || 0) === 0);
     };
 
     // Determine which divAbbs to process
     let targetAbbs;
     if (userDiv === 'ALL') {
-      targetAbbs = Object.keys(divMap).filter(abb =>
-        hasPlayoffGamesThisWeek(abb) || allWinsAreZero(abb)
-      );
+      targetAbbs = Object.keys(divMap).filter(abb => hasPlayoffGamesInRelevantWeeks(abb));
+      if (!targetAbbs.length) {
+        statusEl.innerHTML = `No divisions with playoff games in week ${week} or ${week + 1}.`;
+        return;
+      }
     } else {
       // userDiv is "CONF DIV" — find matching abb
       const meta = divs.find(d => (d.conf + ' ' + d.div) === userDiv);

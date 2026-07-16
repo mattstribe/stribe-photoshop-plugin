@@ -60,11 +60,10 @@
     </sp-body>
 
     <div class="action-buttons">
-      <select id="scheduleMode" class="schedule-mode-select">
-        <option value="both">Both</option>
-        <option value="final">Final Scores</option>
-        <option value="upcoming">Upcoming Games</option>
-      </select>
+      <div class="schedule-mode-row">
+        <sp-checkbox id="scheduleUpcomingGamesCheckbox" checked>UG</sp-checkbox>
+        <sp-checkbox id="scheduleFinalScoresCheckbox" checked>FS</sp-checkbox>
+      </div>
       <button type="button" class="panel-action-btn" id="btnSchedule">SCHEDULE</button>
       <button type="button" class="panel-action-btn" id="btnStandings">STANDINGS</button>
       <button type="button" class="panel-action-btn" id="btnStats">STATS</button>

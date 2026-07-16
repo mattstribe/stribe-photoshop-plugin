@@ -13,92 +13,94 @@ document.getElementById("btnSelectFolder").addEventListener("click", async () =>
 
 // Refresh week
 document.getElementById("btnRefreshWeek").addEventListener("click", async () => {
+  ui.setStatus("Refreshing week...");
   await ui.initializeUI();
+  ui.setStatus("✅ Week refreshed");
 });
 
 // Action buttons
 document.getElementById("btnSchedule").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const scheduleModule = require("./features/schedule.js");
-  await scheduleModule.handleScheduleUpdate(baseFolder);
+  await ui.runFeatureAction("SCHEDULE", async (baseFolder) => {
+    const scheduleModule = require("./features/schedule.js");
+    await scheduleModule.handleScheduleUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnStandings").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const standingsModule = require("./features/standings.js");
-  await standingsModule.handleStandingsUpdate(baseFolder);
+  await ui.runFeatureAction("STANDINGS", async (baseFolder) => {
+    const standingsModule = require("./features/standings.js");
+    await standingsModule.handleStandingsUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnStats").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const statsModule = require("./features/stats.js");
-  await statsModule.handleStatsUpdate(baseFolder);
+  await ui.runFeatureAction("STATS", async (baseFolder) => {
+    const statsModule = require("./features/stats.js");
+    await statsModule.handleStatsUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnHaveADayPlayer").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const haveADayModule = require("./features/have-a-day.js");
-  await haveADayModule.handleHaveADayUpdate(baseFolder, "PLAYER");
+  await ui.runFeatureAction("HAVE-A-DAY PLAYER", async (baseFolder) => {
+    const haveADayModule = require("./features/have-a-day.js");
+    await haveADayModule.handleHaveADayUpdate(baseFolder, "PLAYER");
+  });
 });
 
 document.getElementById("btnHaveADayGoalie").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const haveADayModule = require("./features/have-a-day.js");
-  await haveADayModule.handleHaveADayUpdate(baseFolder, "GOALIE");
+  await ui.runFeatureAction("HAVE-A-DAY GOALIE", async (baseFolder) => {
+    const haveADayModule = require("./features/have-a-day.js");
+    await haveADayModule.handleHaveADayUpdate(baseFolder, "GOALIE");
+  });
 });
 
 document.getElementById("btnThumbnail").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const thumbnailModule = require("./features/thumbnail.js");
-  await thumbnailModule.handleThumbnailUpdate(baseFolder);
+  await ui.runFeatureAction("THUMBNAIL", async (baseFolder) => {
+    const thumbnailModule = require("./features/thumbnail.js");
+    await thumbnailModule.handleThumbnailUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnTopPlays").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const topPlaysModule = require("./features/top-plays.js");
-  await topPlaysModule.handleTopPlaysUpdate(baseFolder);
+  await ui.runFeatureAction("TOP PLAYS", async (baseFolder) => {
+    const topPlaysModule = require("./features/top-plays.js");
+    await topPlaysModule.handleTopPlaysUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnDivPreviews").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const divPreviewsModule = require("./features/divPreviews.js");
-  await divPreviewsModule.handleDivPreviewsUpdate(baseFolder);
+  await ui.runFeatureAction("DIV PREVIEWS", async (baseFolder) => {
+    const divPreviewsModule = require("./features/divPreviews.js");
+    await divPreviewsModule.handleDivPreviewsUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnActiveDivisions").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const activeDivisionsModule = require("./features/activeDivisions.js");
-  await activeDivisionsModule.handleActiveDivisionsUpdate(baseFolder);
+  await ui.runFeatureAction("ACTIVE DIVS", async (baseFolder) => {
+    const activeDivisionsModule = require("./features/activeDivisions.js");
+    await activeDivisionsModule.handleActiveDivisionsUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnTeamsUpdate").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const teamsUpdateModule = require("./features/teamsUpdate.js");
-  await teamsUpdateModule.handleTeamsUpdate(baseFolder);
+  await ui.runFeatureAction("TEAMS UPDATE", async (baseFolder) => {
+    const teamsUpdateModule = require("./features/teamsUpdate.js");
+    await teamsUpdateModule.handleTeamsUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnPowerRankings").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const powerRankingsModule = require("./features/power-rankings.js");
-  await powerRankingsModule.handlePowerRankingsUpdate(baseFolder);
+  await ui.runFeatureAction("POWER RANKINGS", async (baseFolder) => {
+    const powerRankingsModule = require("./features/power-rankings.js");
+    await powerRankingsModule.handlePowerRankingsUpdate(baseFolder);
+  });
 });
 
 document.getElementById("btnBracket").addEventListener("click", async () => {
-  await ui.initializeUI();
-  const baseFolder = await storage.getBaseFolder();
-  const bracketModule = require("./features/bracket.js");
-  await bracketModule.handleBracketUpdate(baseFolder);
+  await ui.runFeatureAction("BRACKET", async (baseFolder) => {
+    const bracketModule = require("./features/bracket.js");
+    await bracketModule.handleBracketUpdate(baseFolder);
+  });
 });
 
 // Division
@@ -108,6 +110,15 @@ document.getElementById("divisionInput").addEventListener("input", ui.updateDivi
 const allDivsCheckbox = document.getElementById("allDivisionsCheckbox");
 if (allDivsCheckbox) {
   allDivsCheckbox.addEventListener("change", ui.updateActionButtons);
+}
+
+const scheduleFinalScoresCheckbox = document.getElementById("scheduleFinalScoresCheckbox");
+const scheduleUpcomingGamesCheckbox = document.getElementById("scheduleUpcomingGamesCheckbox");
+if (scheduleFinalScoresCheckbox) {
+  scheduleFinalScoresCheckbox.addEventListener("change", ui.updateActionButtons);
+}
+if (scheduleUpcomingGamesCheckbox) {
+  scheduleUpcomingGamesCheckbox.addEventListener("change", ui.updateActionButtons);
 }
 
 // Settings Menu (3-dot menu)

@@ -35,12 +35,20 @@ async function handleScheduleUpdate(baseFolder) {
     const { divs, confs, teams } = leagueData;
     let { schedule, week, year } = scheduleData;
 
-    // Filter schedule by mode before any grouping
-    const scheduleMode = document.getElementById("scheduleMode")?.value || 'both';
-    console.log(`[SCHEDULE] Mode: "${scheduleMode}" | Week: ${week} | Total games before filter: ${schedule.length}`);
-    if (scheduleMode === 'final')    schedule = schedule.filter(g => Number(g.week) === week);
-    if (scheduleMode === 'upcoming') schedule = schedule.filter(g => Number(g.week) === week + 1);
-    console.log(`[SCHEDULE] Games after filter: ${schedule.length}`);
+    // Filter schedule by checkbox selection before any grouping
+    const runFinal = document.getElementById("scheduleFinalScoresCheckbox")?.checked !== false;
+    const runUpcoming = document.getElementById("scheduleUpcomingGamesCheckbox")?.checked !== false;
+    if (!runFinal && !runUpcoming) {
+      statusEl.textContent = "⚠️ Select Final Scores and/or Upcoming Games";
+      return;
+    }
+    if (runFinal && runUpcoming) {
+      schedule = schedule.filter(g => Number(g.week) === week || Number(g.week) === week + 1);
+    } else if (runFinal) {
+      schedule = schedule.filter(g => Number(g.week) === week);
+    } else {
+      schedule = schedule.filter(g => Number(g.week) === week + 1);
+    }
 
     // Read user input (division abb, conference name, or ALL)
     const input = document.getElementById("divisionInput").value.trim().toUpperCase();

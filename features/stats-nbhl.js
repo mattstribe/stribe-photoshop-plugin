@@ -558,10 +558,12 @@ async function handleStatsUpdate(baseFolder) {
               else
                   goalsLayer.textItem.contents = topGoals[i].goals;
               
-              // Adjust size if last name is too long 
-              const fontSize = Number(lastNameLayer.textItem.characterStyle.size); 
-              if (lastNameLayer.textItem.contents.length > 11)
-                  lastNameLayer.textItem.characterStyle.size = 0.75 * fontSize;   
+              // UXP size is in doc pixels; Character panel shows points (× 72/ppi)
+              const goalsLastNamePt = isPlayoff ? 8 : 15;
+              const goalsPt = lastNameLayer.textItem.contents.length > 11
+                ? goalsLastNamePt * 0.85
+                : goalsLastNamePt;
+              lastNameLayer.textItem.characterStyle.size = pointsToDocSize(goalsPt, doc);
               
               // Set text colors based on background
               setTextColor(firstNameLayer, tColor);
@@ -625,10 +627,12 @@ async function handleStatsUpdate(baseFolder) {
               if (gpLayer) gpLayer.textItem.contents = `${topGAA[i].GP}GP`;
               minimumLayer.textItem.contents = `(MIN. ${GPmin}GP)`;
               
-              // Adjust size if last name is too long 
-              const fontSize = Number(lastNameLayer.textItem.characterStyle.size); 
-              if (lastNameLayer.textItem.contents.length > 11)
-                  lastNameLayer.textItem.characterStyle.size = 0.75 * fontSize;                
+              // UXP size is in doc pixels; Character panel shows points (× 72/ppi)
+              const gaaLastNamePt = isPlayoff ? 8 : 15;
+              const gaaPt = lastNameLayer.textItem.contents.length > 11
+                ? gaaLastNamePt * 0.85
+                : gaaLastNamePt;
+              lastNameLayer.textItem.characterStyle.size = pointsToDocSize(gaaPt, doc);
               
               // Set text colors based on background
               setTextColor(firstNameLayer, tColor);
@@ -753,6 +757,13 @@ module.exports = {
 };
 
 // ===== Helpers (bottom of file) =====
+
+// UXP characterStyle.size uses document pixels; Character panel shows points.
+// At 300ppi: set 8 → shows 1.92 (8 × 72/300). Convert points → API units.
+function pointsToDocSize(points, doc) {
+  const ppi = Number(doc?.resolution) || 72;
+  return points * (ppi / 72);
+}
 
 // If the last name is just an initial (e.g. "R."), put the first name in the
 // last name layer and leave the first name layer blank.

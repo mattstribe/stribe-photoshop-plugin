@@ -98,11 +98,13 @@ function updateActionButtons() {
   const teamsUpdateBtn = document.getElementById("btnTeamsUpdate");
   const powerRankingsBtn = document.getElementById("btnPowerRankings");
   const bracketBtn       = document.getElementById("btnBracket");
-  const scheduleModeEl   = document.getElementById("scheduleMode");
+  const scheduleFinalEl  = document.getElementById("scheduleFinalScoresCheckbox");
+  const scheduleUpcomingEl = document.getElementById("scheduleUpcomingGamesCheckbox");
 
   if (!hasFolderSelected) {
     scheduleBtn.disabled = standingsBtn.disabled = statsBtn.disabled = true;
-    if (scheduleModeEl) scheduleModeEl.disabled = true;
+    if (scheduleFinalEl) scheduleFinalEl.disabled = true;
+    if (scheduleUpcomingEl) scheduleUpcomingEl.disabled = true;
     if (haveADayPlayerBtn) haveADayPlayerBtn.disabled = true;
     if (haveADayGoalieBtn) haveADayGoalieBtn.disabled = true;
     if (thumbnailBtn) thumbnailBtn.disabled = true;
@@ -126,12 +128,18 @@ function updateActionButtons() {
 
   // Schedule can ONLY run when we're respecting the current week filter.
   const scheduleEnabled = !ignoreWeek && (isAll || isValidDiv || isValidConf);
+  const runFinal = !!(scheduleFinalEl && scheduleFinalEl.checked);
+  const runUpcoming = !!(scheduleUpcomingEl && scheduleUpcomingEl.checked);
+  const hasScheduleMode = runFinal || runUpcoming;
+
+  if (scheduleFinalEl) scheduleFinalEl.disabled = !scheduleEnabled;
+  if (scheduleUpcomingEl) scheduleUpcomingEl.disabled = !scheduleEnabled;
+
   if (ignoreWeek) {
     scheduleBtn.disabled = true;
   } else {
-    scheduleBtn.disabled = !scheduleEnabled;
+    scheduleBtn.disabled = !scheduleEnabled || !hasScheduleMode;
   }
-  if (scheduleModeEl) scheduleModeEl.disabled = !scheduleEnabled;
   standingsBtn.disabled = statsBtn.disabled = !(isAll || isValidDiv);
   if (haveADayPlayerBtn) haveADayPlayerBtn.disabled = !(isAll || isValidDiv);
   if (haveADayGoalieBtn) haveADayGoalieBtn.disabled = !(isAll || isValidDiv);
@@ -140,6 +148,30 @@ function updateActionButtons() {
   if (teamsUpdateBtn) teamsUpdateBtn.disabled = !(isAll || isValidDiv || isValidConf);
   if (powerRankingsBtn) powerRankingsBtn.disabled = false;
   if (bracketBtn) bracketBtn.disabled = !(isAll || isValidDiv);
+}
+
+function setStatus(text) {
+  const statusEl = document.getElementById("status");
+  if (statusEl) statusEl.textContent = text;
+}
+
+async function yieldToUI() {
+  await new Promise(resolve => setTimeout(resolve, 0));
+}
+
+async function runFeatureAction(actionLabel, handler) {
+  setStatus(`Starting ${actionLabel}...`);
+  await yieldToUI();
+  setStatus("Refreshing league data...");
+  await initializeUI();
+  setStatus(`Running ${actionLabel} — loading sheet data...`);
+  await yieldToUI();
+  const baseFolder = await storage.getBaseFolder();
+  if (!baseFolder) {
+    setStatus("⚠️ Please select your League Package folder first");
+    return;
+  }
+  await handler(baseFolder);
 }
 
 async function initializeUI() {
@@ -171,5 +203,7 @@ function updateDivisionDisplay() {
 module.exports = {
   initializeUI,
   updateDivisionDisplay,
-  updateActionButtons
+  updateActionButtons,
+  setStatus,
+  runFeatureAction
 };

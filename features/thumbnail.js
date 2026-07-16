@@ -75,8 +75,12 @@ async function handleThumbnailUpdate(baseFolder) {
       const divAbb = String(game.div1 || "").trim();
       const conf = String(game.conf || "").trim();
       const isPlayoff = String(game.gameType || "").toUpperCase() === "PLAYOFFS";
-      const dateTextValue = formatDateForThumbnail(game.date, year);
-      const dateFileValue = formatDateForThumbnailFilename(game.date);
+      const dateTextValue = isPlayoff
+        ? `${String(game.round || "").trim()} - ${String(game.series || "").trim()}`.toUpperCase()
+        : formatDateForThumbnail(game.date, year);
+      const dateFileValue = isPlayoff
+        ? `${formatDateForThumbnailFilename(game.date)}_Playoffs-${String(game.round || "").trim()}-${String(game.series || "").trim()}`
+        : formatDateForThumbnailFilename(game.date);
 
       const templateInfo = await resolveThumbnailTemplate(gamedayFolder, divAbb, conf, isPlayoff);
       if (!templateInfo || !templateInfo.file) {
@@ -266,33 +270,18 @@ function setDateLayers(fullGameFolder, highlightsFolder, value) {
 }
 
 async function resolveThumbnailTemplate(gamedayFolder, divAbb, conf, isPlayoff) {
-  const foldersToTry = [];
-  const namesToTry = [];
+  const templateRoot = await tryGetFolder(gamedayFolder, DOC_ID);
+  if (!templateRoot) return null;
 
-  const regularRoot = await tryGetFolder(gamedayFolder, "THUMBNAIL");
-  const regularTier = regularRoot ? await tryGetFolder(regularRoot, conf) : null;
-  const playoffsRoot = await tryGetFolder(gamedayFolder, "Playoffs");
-  const playoffsThumbRoot = playoffsRoot ? await tryGetFolder(playoffsRoot, "THUMBNAIL") : null;
-  const playoffsTier = playoffsThumbRoot ? await tryGetFolder(playoffsThumbRoot, conf) : null;
+  // Same naming convention as stats/schedule: {DOC_ID}_Playoffs.psd in the DOC_ID folder,
+  // falling back to the regular template if no playoff-specific file exists.
+  const namesToTry = isPlayoff
+    ? [`${DOC_ID}_Playoffs.psd`, `${DOC_ID}.psd`]
+    : [`${DOC_ID}.psd`];
 
-  if (isPlayoff) {
-    if (playoffsTier) foldersToTry.push(playoffsTier);
-    if (playoffsThumbRoot) foldersToTry.push(playoffsThumbRoot);
-    if (regularTier) foldersToTry.push(regularTier);
-    if (regularRoot) foldersToTry.push(regularRoot);
-    namesToTry.push(`${divAbb}_PLAYOFF-THUMBNAIL.psd`, "PLAYOFF-THUMBNAIL.psd", `${divAbb}_THUMBNAIL.psd`, "THUMBNAIL.psd");
-  } else {
-    if (regularTier) foldersToTry.push(regularTier);
-    if (regularRoot) foldersToTry.push(regularRoot);
-    namesToTry.push(`${divAbb}_THUMBNAIL.psd`, "THUMBNAIL.psd");
-  }
-
-  for (let f = 0; f < foldersToTry.length; f++) {
-    const folder = foldersToTry[f];
-    for (let n = 0; n < namesToTry.length; n++) {
-      const file = await tryGetFile(folder, namesToTry[n]);
-      if (file) return { folder, file };
-    }
+  for (const name of namesToTry) {
+    const file = await tryGetFile(templateRoot, name);
+    if (file) return { folder: templateRoot, file };
   }
 
   return null;

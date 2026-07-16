@@ -236,32 +236,21 @@ sp-button[disabled]::part(button):hover {
 
 /* Export to Cloud: directly under Ignore Week, left-aligned */
 
-.schedule-mode-select {
-  display: block;
+.schedule-mode-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  min-height: 21px;
-  -webkit-appearance: auto;
-  appearance: auto;
-  background-color: #0b0e16;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  border-radius: 5px;
-  color: #e5e7eb;
-  font-size: 12px;
-  font-family: inherit;
-  padding: 4px 8px;
-  cursor: pointer;
+  margin: 0 0 5px 0;
   box-sizing: border-box;
-  margin: 0 0 3px 0;
 }
 
-.schedule-mode-select:focus {
-  outline: none;
-  border-color: #5ac8fa;
-}
-
-.schedule-mode-select:disabled {
-  opacity: 0.5;
-  cursor: default;
+/* UXP often ignores flex gap — use margin for spacing */
+.schedule-mode-row sp-checkbox {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  margin: 0 10px;
 }
 
 .export-cloud-row {
